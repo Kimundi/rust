@@ -1750,6 +1750,7 @@ pub trait OwnedVector<T> {
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: pure fn(t: &T) -> bool);
+    fn consume(self, f: fn(uint, v: T));
 }
 
 impl<T> ~[T]: OwnedVector<T> {
@@ -1803,6 +1804,10 @@ impl<T> ~[T]: OwnedVector<T> {
         retain(self, f);
     }
 
+    #[inline]
+    fn consume(self, f: fn(uint, v: T)) {
+        consume(self, f)
+    }
 }
 
 pub trait OwnedCopyableVector<T: Copy> {

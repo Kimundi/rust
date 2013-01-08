@@ -45,9 +45,9 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc_({
-        items: do doc.items.filter |ItemTag| {
+        items: doc.items.filter(|ItemTag| {
             is_visible(fold.ctxt, ItemTag.item())
-        },
+        }),
         .. *doc
     })
 }

@@ -322,6 +322,15 @@ impl f64: num::One {
     static pure fn one() -> f64 { 1.0 }
 }
 
+impl f64: num::Round {
+    #[inline(always)]
+    pure fn floor(&self) -> f64 { floor(*self) }
+    #[inline(always)]
+    pure fn ceil(&self) -> f64 { ceil(*self) }
+    #[inline(always)]
+    pure fn fract(&self) -> f64 { (*self) - floor(*self) }
+}
+
 //
 // Local Variables:
 // mode: rust

@@ -134,6 +134,15 @@ impl T: num::One {
     static pure fn one() -> T { 1 }
 }
 
+impl T: num::Round {
+    #[inline(always)]
+    pure fn floor(&self) -> T { *self }
+    #[inline(always)]
+    pure fn ceil(&self) -> T { *self }
+    #[inline(always)]
+    pure fn fract(&self) -> T { 0 }
+}
+
 impl T: iter::Times {
     #[inline(always)]
     #[doc = "A convenience form for basic iteration. Given a variable `x` \

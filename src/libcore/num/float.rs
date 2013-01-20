@@ -488,6 +488,17 @@ impl float: num::One {
     static pure fn one() -> float { 1.0 }
 }
 
+impl float: num::Round {
+    #[inline(always)]
+    pure fn floor(&self) -> float { f64::floor(*self as f64) as float}
+    #[inline(always)]
+    pure fn ceil(&self) -> float { f64::ceil(*self as f64) as float}
+    #[inline(always)]
+    pure fn fract(&self) -> float {
+        (*self) - (f64::floor(*self as f64) as float)
+    }
+}
+
 #[test]
 pub fn test_from_str() {
    assert from_str(~"3") == Some(3.);

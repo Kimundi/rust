@@ -298,6 +298,15 @@ impl f32: num::One {
     static pure fn one() -> f32 { 1.0 }
 }
 
+impl f32: num::Round {
+    #[inline(always)]
+    pure fn floor(&self) -> f32 { floor(*self) }
+    #[inline(always)]
+    pure fn ceil(&self) -> f32 { ceil(*self) }
+    #[inline(always)]
+    pure fn fract(&self) -> f32 { (*self) - floor(*self) }
+}
+
 //
 // Local Variables:
 // mode: rust

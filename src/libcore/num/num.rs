@@ -30,3 +30,9 @@ pub trait Zero {
 pub trait One {
     static pure fn one() -> self;
 }
+
+pub trait Round {
+    pure fn floor(&self) -> self;
+    pure fn ceil(&self)  -> self;
+    pure fn fract(&self) -> self;
+}

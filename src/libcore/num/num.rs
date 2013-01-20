@@ -36,3 +36,11 @@ pub trait Round {
     pure fn ceil(&self)  -> self;
     pure fn fract(&self) -> self;
 }
+
+pub trait ToStrRadix {
+    pub pure fn to_str_radix(&self, radix: uint) -> ~str;
+}
+
+pub trait FromStrRadix {
+    static pub pure fn from_str_radix(str: &str, radix: uint) -> Option<self>;
+}

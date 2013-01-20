@@ -330,6 +330,33 @@ pub extern {
     fn floorf64(val: f64) -> f64;
 }
 
+impl f64: num::Round {
+    #[inline(always)]
+    pure fn round(&self, mode: num::RoundMode) -> f64 {
+        match mode {
+            num::RoundDown                           => floorf64(*self),
+            num::RoundUp                             => ceil(*self),
+            num::RoundToZero   if is_negative(*self) => ceil(*self),
+            num::RoundToZero                         => floorf64(*self),
+            num::RoundFromZero if is_negative(*self) => floorf64(*self),
+            num::RoundFromZero                       => ceil(*self)
+        }
+    }
+
+    #[inline(always)]
+    pure fn floor(&self) -> f64 { floorf64(*self) }
+    #[inline(always)]
+    pure fn ceil(&self) -> f64 { ceil(*self) }
+    #[inline(always)]
+    pure fn fract(&self) -> f64 {
+        if is_negative(*self) {
+            (*self) - ceil(*self)
+        } else {
+            (*self) - floorf64(*self)
+        }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

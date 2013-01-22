@@ -17,7 +17,9 @@ use T = self::inst::T;
 use char;
 use cmp::{Eq, Ord};
 use cmp;
+use to_str::ToStr;
 use from_str::FromStr;
+use num::{ToStrRadix, FromStrRadix};
 use iter;
 use num;
 use num::Num::from_int;
@@ -171,70 +173,83 @@ impl T: iter::Times {
     }
 }
 
-/**
- * Parse a buffer of bytes
- *
- * # Arguments
- *
- * * buf - A byte buffer
- * * radix - The base of the number
- */
-pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
-    if vec::len(buf) == 0u { return None; }
-    let mut i = vec::len(buf) - 1u;
-    let mut start = 0u;
-    let mut power = 1 as T;
+// String conversion functions and impl str -> num
 
-    if buf[0] == ('-' as u8) {
-        power = -1 as T;
-        start = 1u;
-    }
-    let mut n = 0 as T;
-    loop {
-        match char::to_digit(buf[i] as char, radix) {
-          Some(d) => n += (d as T) * power,
-          None => return None
-        }
-        power *= radix as T;
-        if i <= start { return Some(n); }
-        i -= 1u;
-    };
+#[inline(always)]
+pub pure fn from_str(s: &str) -> Option<T> {
+    num::from_str_common(s, 10u, true, false, false,
+                         num::ExpNone, false)
 }
 
-/// Parse a string to an int
 #[inline(always)]
-pub pure fn from_str(s: &str) -> Option<T>
-{
-    parse_bytes(str::to_bytes(s), 10u)
+pub pure fn from_str_radix(s: &str, radix: uint) -> Option<T> {
+    num::from_str_common(s, radix, true, false, false,
+                         num::ExpNone, false)
+}
+
+#[inline(always)]
+pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+    num::from_str_bytes_common(buf, radix, true, false, false,
+                               num::ExpNone, false)
 }
 
 impl T : FromStr {
     #[inline(always)]
-    static pure fn from_str(s: &str) -> Option<T> { from_str(s) }
+    static pure fn from_str(s: &str) -> Option<T> {
+        from_str(s)
+    }
+}
+
+impl T : FromStrRadix {
+    #[inline(always)]
+    static pure fn from_str_radix(&self, s: &str, radix: uint) -> Option<T> {
+        from_str_radix(s, radix)
+    }
+}
+
+// String conversion functions and impl num -> str
+
+#[inline(always)]
+pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+    let (buf, _) = num::to_str_bytes_common(&n, radix, false, false,
+                                            num::SignNeg, num::DigAll);
+    f(buf)    
+}
+
+/// Convert to a string in base 10
+#[inline(always)]
+pub pure fn to_str(num: T) -> ~str {
+    let (buf, _) = num::to_str_common(&num, 10u, false, false,
+                                      num::SignNeg, num::DigAll);
+    buf
 }
 
 /// Convert to a string in a given base
 #[inline(always)]
-pub pure fn to_str(n: T, radix: uint) -> ~str {
-    do to_str_bytes(n, radix) |slice| {
-        do vec::as_imm_buf(slice) |p, len| {
-            unsafe { str::raw::from_buf_len(p, len) }
-        }
-    }
-}
-
-#[inline(always)]
-pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
-    if n < 0 as T {
-        uint::to_str_bytes(true, -n as uint, radix, f)
-    } else {
-        uint::to_str_bytes(false, n as uint, radix, f)
-    }
+pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
+    let (buf, _) = num::to_str_common(&num, radix, false, false,
+                                      num::SignNeg, num::DigAll);
+    buf
 }
 
 /// Convert to a string
+/// *Deprecated*, use to_str() instead.
 #[inline(always)]
-pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
+pub pure fn str(i: T) -> ~str { to_str(i) }
+
+impl T : ToStr {
+    #[inline(always)]
+    pure fn to_str() -> ~str {
+        to_str(self)
+    }
+}
+
+impl T : ToStrRadix {
+    #[inline(always)]
+    pure fn to_str_radix(&self, radix: uint) -> ~str {
+        to_str_radix(*self, radix)
+    }
+}
 
 #[test]
 fn test_from_str() {

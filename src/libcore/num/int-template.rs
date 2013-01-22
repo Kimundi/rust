@@ -213,7 +213,7 @@ impl T : FromStrRadix {
 pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     let (buf, _) = num::to_str_bytes_common(&n, radix, false, false,
                                             num::SignNeg, num::DigAll);
-    f(buf)    
+    f(buf)
 }
 
 /// Convert to a string in base 10
@@ -296,11 +296,11 @@ fn test_parse_bytes() {
 
 #[test]
 fn test_to_str() {
-    assert (to_str(0 as T, 10u) == ~"0");
-    assert (to_str(1 as T, 10u) == ~"1");
-    assert (to_str(-1 as T, 10u) == ~"-1");
-    assert (to_str(127 as T, 16u) == ~"7f");
-    assert (to_str(100 as T, 10u) == ~"100");
+    assert (to_str_radix(0 as T, 10u) == ~"0");
+    assert (to_str_radix(1 as T, 10u) == ~"1");
+    assert (to_str_radix(-1 as T, 10u) == ~"-1");
+    assert (to_str_radix(127 as T, 16u) == ~"7f");
+    assert (to_str_radix(100 as T, 10u) == ~"100");
 }
 
 #[test]

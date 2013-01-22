@@ -120,7 +120,7 @@ pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
  *   probably going to catch it before making the call.
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
- */ 
+ */
 pub pure fn pow_with_uint<T: Num One Zero>(radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -257,7 +257,6 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push(char::from_digit(current_digit.to_int() as uint, radix)
                  .unwrap() as u8);
-            
         }
         if !(deccum > _0) { break; }
     }
@@ -306,8 +305,8 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
             deccum *= radix_gen;
             let current_digit = deccum.floor();
             unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-                     .unwrap() as u8);
+                buf.push(char::from_digit(
+                    current_digit.to_int() as uint, radix).unwrap() as u8);
             }
             deccum = deccum.fract();
             dig += 1u;

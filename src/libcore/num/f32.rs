@@ -310,17 +310,17 @@ impl f32: num::Round {
     #[inline(always)]
     pure fn round(&self, mode: num::RoundMode) -> f32 {
         match mode {
-            num::RoundDown                           => floorf32(*self),
+            num::RoundDown                           => floor(*self),
             num::RoundUp                             => ceil(*self),
             num::RoundToZero   if is_negative(*self) => ceil(*self),
-            num::RoundToZero                         => floorf32(*self),
-            num::RoundFromZero if is_negative(*self) => floorf32(*self),
+            num::RoundToZero                         => floor(*self),
+            num::RoundFromZero if is_negative(*self) => floor(*self),
             num::RoundFromZero                       => ceil(*self)
         }
     }
 
     #[inline(always)]
-    pure fn floor(&self) -> f32 { floorf32(*self) }
+    pure fn floor(&self) -> f32 { floor(*self) }
     #[inline(always)]
     pure fn ceil(&self) -> f32 { ceil(*self) }
     #[inline(always)]
@@ -328,7 +328,7 @@ impl f32: num::Round {
         if is_negative(*self) {
             (*self) - ceil(*self)
         } else {
-            (*self) - floorf32(*self)
+            (*self) - floor(*self)
         }
     }
 }

@@ -509,7 +509,7 @@ impl my_visitor: TyVisitor {
     }
     fn visit_int() -> bool {
       do self.get::<int>() |i| {
-            self.vals += ~[int::to_str(i, 10u)];
+            self.vals += ~[int::to_str(i)];
       };
       true
     }

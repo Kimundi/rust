@@ -247,10 +247,10 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
 
     let neg = *num < _0 || (negative_zero && *num == _0
                             && special && is_neg_zero(num));
-    let num_abs        = if (neg) { -*num } else { *num };
     let mut buf: ~[u8] = ~[];
-    let mut deccum     = num_abs;
     let radix_gen      = Num::from_int::<T>(radix as int);
+
+    let mut deccum;
 
     let (limit_digits, max_digits, exact) = match digits {
         DigAll          => (false, 0u, false),
@@ -258,65 +258,96 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         DigExact(count) => (true, count, true)
     };
 
-    // make sure we have at least a leading '0' by looping at least once
+    // First emitt the non-fractional part, looping at least once to make
+    // sure at least a `0` gets emitted.
+    deccum = num.round(RoundToZero);
     loop {
-        let current_digit = deccum % radix_gen;
+        // Calculate the absolute value of each digit instead of only
+        // doing it once for the whole number because a
+        // representable negative number doesn't necessary have an
+        // representable additive inverse of the same type
+        // (See twos complement). But we assume that for the
+        // numbers [-35 .. 0] we always have [0 .. 35].
+        let current_digit_signed = deccum % radix_gen;
+        let current_digit = if current_digit_signed < _0 {
+            -current_digit_signed
+        } else {
+            current_digit_signed
+        };
+
+        // Decrease the deccumulator one digit at a time
         deccum /= radix_gen;
-        deccum = deccum.floor();
+        deccum = deccum.round(RoundToZero);
+
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push(char::from_digit(current_digit.to_int() as uint, radix)
                  .unwrap() as u8);
         }
-        if !(deccum > _0) { break; }
+
+        // No more digits to calculate for the non-fractional part -> break
+        if deccum == _0 { break; }
     }
 
-    let digits_start;
-
-    // Decide what sign to put in front:
-    match sign {
-        SignNone => {
-            digits_start = 0
-        }
+    // Decide what sign to put in front, and where the
+    // actual digits start in `buf`:
+    let digits_start = match sign {
+        SignNone => { 0 }
         SignNeg | SignAll if neg => {
             unsafe { // FIXME: Pureness workaround (#4568)
                 buf.push('-' as u8);
             }
-            digits_start = 1;
+            1
         }
-        SignNeg => {
-            digits_start = 0;
-        }
+        SignNeg => { 0 }
         SignAll => {
             unsafe { // FIXME: Pureness workaround (#4568)
                 buf.push('+' as u8);
             }
-            digits_start = 1;
+            1
         }
-    }
+    };
+
     unsafe { // FIXME: Pureness workaround (#4568)
         vec::reverse(buf);
     }
-    deccum = num_abs.fract();
-    if deccum > _0 || (limit_digits && exact && max_digits > 0){
+
+    // Now emitt the fractional part, if any
+    deccum = num.fract();
+    if deccum != _0 || (limit_digits && exact && max_digits > 0) {
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push('.' as u8);
         }
         let mut dig = 0u;
 
-        while                           // calculate new digits while
-        (!limit_digits && deccum > _0)  // - there is no limit and
-        || (limit_digits &&             //   there are digits left
-            dig < max_digits && (       // - or there is a limit,
-                exact ||                //   it's not reached yet and
-                (!exact && deccum > _0) //   - it's exact
-            )                           //   - or it's a maximum,
-        ) {                             //     and there are still digits left
+        // calculate new digits while
+        // - there is no limit and there are digits left
+        // - or there is a limit, it's not reached yet and
+        //   - it's exact
+        //   - or it's a maximum, and there are still digits left
+        while (!limit_digits && deccum != _0)
+           || (limit_digits && dig < max_digits && (
+                   exact
+                || (!exact && deccum != _0)
+              )
+        ) {
+            // Shift first fractional digit into the integer part
             deccum *= radix_gen;
-            let current_digit = deccum.floor();
+
+            // Calculate the absolute value of each digit.
+            // See note in first loop.
+            let current_digit_signed = deccum.round(RoundToZero);
+            let current_digit = if current_digit_signed < _0 {
+                -current_digit_signed
+            } else {
+                current_digit_signed
+            };
+
             unsafe { // FIXME: Pureness workaround (#4568)
                 buf.push(char::from_digit(
                     current_digit.to_int() as uint, radix).unwrap() as u8);
             }
+
+            // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
             dig += 1u;
         }
@@ -462,13 +493,14 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
     let mut i         = start;
     let mut exp_found = false;
 
+    // Parse integer part of number
     while i < len {
         let c = buf[i] as char;
 
         match char::to_digit(c, radix) {
             Some(digit) => {
                 accum *= radix_gen;                   // move accum one left
-                accum += Num::from_int(digit as int); // add current position
+                accum += Num::from_int(digit as int); // add current digit
             }
             None => match c {
                 'e' | 'E' | 'p' | 'P' => {
@@ -486,7 +518,9 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
         i += 1u;
     }
 
-    if !exp_found {                              // prevents 2. parse attempt
+    // Parse fractional part of number
+    // Skip if already reached start of exponent
+    if !exp_found {
         let mut power = _1;
 
         while i < len {
@@ -511,7 +545,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
     }
 
     // Special case: buf not empty, but does not contain any digit in front
-    // of the exponent sign
+    // of the exponent sign -> number is empty string
     if i == start {
         if empty_zero {
             return Some(_0);
@@ -543,7 +577,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
                     pow_with_uint::<T>(base, exp_pow.to_int() as uint)
                 }
             }
-            None => return None // invalid exponent; invalid number
+            None => return None // invalid exponent -> invalid number
         }
     }
 

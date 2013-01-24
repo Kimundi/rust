@@ -331,7 +331,6 @@ impl f32: num::Round {
             (*self) - floorf32(*self)
         }
     }
->>>>>>> Added Round trait to core
 }
 
 //

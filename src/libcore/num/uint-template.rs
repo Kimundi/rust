@@ -136,6 +136,9 @@ impl T: num::One {
 
 impl T: num::Round {
     #[inline(always)]
+    pure fn round_to_integer(&self, _: num::RoundModeInteger) -> T { *self }
+
+    #[inline(always)]
     pure fn floor(&self) -> T { *self }
     #[inline(always)]
     pure fn ceil(&self) -> T { *self }

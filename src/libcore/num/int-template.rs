@@ -144,6 +144,9 @@ impl T: num::One {
 
 impl T: num::Round {
     #[inline(always)]
+    pure fn round_to_integer(&self, _: num::RoundModeInteger) -> T { *self }
+    
+    #[inline(always)]
     pure fn floor(&self) -> T { *self }
     #[inline(always)]
     pure fn ceil(&self) -> T { *self }
@@ -179,7 +182,7 @@ impl T: iter::Times {
  * * buf - A byte buffer
  * * radix - The base of the number
  */
-pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+pub pure fn parse_bytes_orig(buf: &[u8], radix: uint) -> Option<T> {
     if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
@@ -199,6 +202,74 @@ pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
         if i <= start { return Some(n); }
         i -= 1u;
     };
+}
+
+priv pure fn compare_helper<U: Eq>(ret: &U, rep: &U) {
+    unsafe {
+        if (*ret == *rep) {
+            io::print(fmt!("T COMPARE OKAY 1 RET: '%?'\n", *ret));
+            io::print(fmt!("T COMPARE OKAY 2 REP: '%?'\n", *rep));
+        } else {
+            io::print(fmt!("T COMPARE FAIL 1 RET: '%?'\n", *ret));
+            io::print(fmt!("T COMPARE FAIL 2 REP: '%?'\n", *rep));
+        }
+    }
+}
+
+priv pure fn ioprint(s: &str) {
+    unsafe {
+        io::print(s);
+    }
+}
+
+priv pure fn ioprintnum(num: T) {
+    unsafe {
+        let mut buf: ~[u8] = ~[];
+        let mut deccum = num;
+        loop {
+            let d = deccum % (10 as T);
+            let d = if d < 0 {-d} else {d};
+            deccum /= 10 as T;
+            buf.push(char::from_digit(d as uint, 10).get() as u8);
+            if deccum == (0 as T) { break; }
+        }
+        if num < 0 {
+            buf.push('-' as u8);
+        }
+        vec::reverse(buf);
+        io::print(str::from_bytes(buf));
+    }
+}
+
+pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+    let ret = parse_bytes_orig(buf, radix);
+    ioprint("from_str_bytes_common start\n");
+    let rep = num::from_str_bytes_common::<T>
+        (buf, radix, true, false, false,num::ExpNone, false);
+    ioprint("from_str_bytes_common end\n");
+        unsafe { match (ret, rep) {
+                (None, Some(_)) => {
+                    io::print(fmt!("P COMPARE NONE 1 RET\n"));
+                    io::print(fmt!("P COMPARE OKAY 2 REP: '%?'\n", rep.get()));
+                }
+                (Some(_), None) => {
+                    io::print(fmt!("P COMPARE OKAY 1 RET: '%?'\n", ret.get()));
+                    io::print(fmt!("P COMPARE NONE 2 REP\n"));
+                }
+                (None, None) => {
+                    io::print(fmt!("P COMPARE OKAY 1 RET: None\n"));
+                    io::print(fmt!("P COMPARE OKAY 2 REP: None\n"));
+                }
+                (_,_)     => if (ret == rep) {
+                    io::print(fmt!("P COMPARE OKAY 1 RET: '%?'\n", ret));
+                    io::print(fmt!("P COMPARE OKAY 2 REP: '%?'\n", rep));
+                } else {
+                    io::print(fmt!("P COMPARE FAIL 1 RET: '%?'\n", ret));
+                    io::print(fmt!("P COMPARE FAIL 2 REP: '%?'\n", rep));
+                }
+            }
+        }
+    ret
 }
 
 /// Parse a string to an int
@@ -224,12 +295,35 @@ pub pure fn to_str(n: T, radix: uint) -> ~str {
 }
 
 #[inline(always)]
-pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+pub pure fn to_str_bytes_orig<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     if n < 0 as T {
         uint::to_str_bytes(true, -n as uint, radix, f)
     } else {
         uint::to_str_bytes(false, n as uint, radix, f)
     }
+}
+
+#[inline(always)]
+pub pure fn to_str_bytes<U: Eq>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+    //let ret =
+    to_str_bytes_orig(n, radix, |bytess| {
+        ioprint("to_str_bytes_common start, num = '");
+        ioprintnum(n); ioprint("'\n");
+        let (buf, _) = num::to_str_bytes_common::<T>
+            (&n, radix, false, false, num::SignNeg, num::DigAll);
+        ioprint("to_str_bytes_common end\n");
+        let ret_s = str::from_bytes(bytess);
+        let rep_s = str::from_bytes(buf);
+        compare_helper(&ret_s, &rep_s);
+        f(bytess)
+    })
+    /*let rep2 = {
+        let (buf, _) = num::to_str_bytes_common::<T>
+            (&n, radix, false, false, num::SignNeg, num::DigAll);
+        f(buf)
+    };
+    compare_helper(&ret2, &rep2);*/
+    //ret
 }
 
 /// Convert to a string

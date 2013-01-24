@@ -137,6 +137,14 @@ pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
         None    => false
     }
 }
+use io;
+priv pure fn ioprint(s: &str) {
+    unsafe {
+        io::print(s);
+        io::print("\n");
+    }
+}
+
 
 /**
  * Convert a char to the corresponding digit.
@@ -153,6 +161,8 @@ pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
  */
 #[inline]
 pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
+    //ioprint(fmt!("to_digit args: %?, %?", c, radix));
+
     if radix > 36 {
         fail fmt!("to_digit: radix %? is to high (maximum 36)", radix)
     }
@@ -176,6 +186,8 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
  */
 #[inline]
 pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
+    //ioprint(fmt!("from_digit args: %?, %?", num, radix));
+
     if radix > 36 {
         fail fmt!("from_digit: radix %? is to high (maximum 36)", num)
     }

@@ -38,9 +38,18 @@ pub trait One {
 }
 
 pub trait Round {
+    pure fn round_to_integer(&self, mode: RoundModeInteger) -> self;
+    
     pure fn floor(&self) -> self;
     pure fn ceil(&self)  -> self;
     pure fn fract(&self) -> self;
+}
+
+pub enum RoundModeInteger {
+    RoundDown,
+    RoundUp,
+    RoundToZero,
+    RoundFromZero
 }
 
 pub trait ToStrRadix {
@@ -120,7 +129,7 @@ pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
  *   probably going to catch it before making the call.
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
- */ 
+ */
 pub pure fn pow_with_uint<T: Num One Zero>(radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -157,6 +166,17 @@ pub enum SignFormat {
     SignNeg,
     SignAll
 }
+
+use io;
+
+priv pure fn ioprint(s: &str) {
+    unsafe {
+        io::print(s);
+        io::print("\n");
+    }
+}
+
+use int;
 
 /**
  * Converts a number to its string representation as a byte vector.
@@ -206,9 +226,17 @@ pub enum SignFormat {
  * - Currently performs no rounding if truncating trailing digits.
  * - Make function handle numbers with expensive copies better.
  */
+pub pure fn num_to_str(i: int, radix: uint) -> ~str {
+    return int::to_str_bytes_orig(i, radix, |bytes| {
+        str::from_bytes(bytes)
+    })
+}
+
+
 pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
+    //ioprint(fmt!("to_str_bytes args: %?, %?, %?, %?, %?, %?", num, radix, special, negative_zero, sign, digits));
     if radix as int <  2 {
         fail fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix);
@@ -238,9 +266,9 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
 
     let neg = *num < _0 || (negative_zero && *num == _0
                             && special && is_neg_zero(num));
-    let num_abs        = if (neg) { -*num } else { *num };
+    //let num_abs        = if (neg) { -*num } else { *num };
     let mut buf: ~[u8] = ~[];
-    let mut deccum     = num_abs;
+    let mut deccum     = num.round_to_integer(RoundToZero);
     let radix_gen      = Num::from_int::<T>(radix as int);
 
     let (limit_digits, max_digits, exact) = match digits {
@@ -252,14 +280,29 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
     // make sure we have at least a leading '0' by looping at least once
     loop {
         let current_digit = deccum % radix_gen;
+        let current_digit = if current_digit < _0 { -current_digit } else { current_digit };
+        
         deccum /= radix_gen;
-        deccum = deccum.floor();
+        deccum = deccum.round_to_integer(RoundToZero);
         unsafe { // FIXME: Pureness workaround (#4568)
-            buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-                 .unwrap() as u8);
+            match char::from_digit(current_digit.to_int() as uint, radix) {
+                Some(cc) => buf.push(cc as u8),
+                None     => {
+                    ioprint("option unwrap fail");
+                    ioprint(fmt!("from_dig args: %?, %?", current_digit.to_int(), radix));
+                    ioprint(fmt!("from_dig args: %?, %?", current_digit.to_int() as uint, radix));
+                    let num_s = num_to_str(num.to_int(), radix);
+                    ioprint(fmt!("to_str_bytes args: %?, %?, %?, %?, %?, %?", num_s, radix, special, negative_zero, sign, digits));
+                    let num_s = num_to_str((num/Num::from_int(10000)).to_int(), radix);
+                    ioprint(fmt!("to_str_bytes args: %?, %?, %?, %?, %?, %?", num_s, radix, special, negative_zero, sign, digits));
+                    
+                    
+                    fail ~"option unwrap fail";
+                }
+            }
             
         }
-        if !(deccum > _0) { break; }
+        if (deccum == _0) { break; }
     }
 
     let digits_start;
@@ -288,26 +331,34 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
     unsafe { // FIXME: Pureness workaround (#4568)
         vec::reverse(buf);
     }
-    deccum = num_abs.fract();
-    if deccum > _0 || (limit_digits && exact && max_digits > 0){
+    deccum = num.fract();
+    if deccum != _0 || (limit_digits && exact && max_digits > 0){
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push('.' as u8);
         }
         let mut dig = 0u;
 
         while                           // calculate new digits while
-        (!limit_digits && deccum > _0)  // - there is no limit and
+        (!limit_digits && deccum != _0)  // - there is no limit and
         || (limit_digits &&             //   there are digits left
             dig < max_digits && (       // - or there is a limit,
                 exact ||                //   it's not reached yet and
-                (!exact && deccum > _0) //   - it's exact
+                (!exact && deccum != _0) //   - it's exact
             )                           //   - or it's a maximum,
         ) {                             //     and there are still digits left
             deccum *= radix_gen;
-            let current_digit = deccum.floor();
+            let current_digit = deccum.round_to_integer(RoundToZero);
             unsafe { // FIXME: Pureness workaround (#4568)
-                buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-                     .unwrap() as u8);
+                match char::from_digit(current_digit.to_int() as uint, radix) {
+                    Some(cc) => buf.push(cc as u8),
+                    None     => {
+                    ioprint("option unwrap fail");
+                    ioprint(fmt!("from_dig args: %?, %?", current_digit.to_int(), radix));
+                    ioprint(fmt!("from_dig args: %?, %?", current_digit.to_int() as uint, radix));
+                    ioprint(fmt!("to_str_bytes args: %?, %?, %?, %?, %?, %?", num, radix, special, negative_zero, sign, digits));
+                    fail ~"option unwrap fail";
+                    }
+                }
             }
             deccum = deccum.fract();
             dig += 1u;
@@ -396,6 +447,8 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
+    //ioprint(fmt!("from_str_bytes args: %?, %?, %?, %?, %?, %?, %?", buf, radix, negative, fractional, special, exponent, empty_zero));
+
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
           => fail fmt!("from_str_bytes_common: radix %? incompatible with \

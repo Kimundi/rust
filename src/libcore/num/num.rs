@@ -222,7 +222,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         fail fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix);
     } else if radix as int > 36 {
-        fail fmt!("to_str_bytes_common: radix %? to low, \
+        fail fmt!("to_str_bytes_common: radix %? to high, \
                    must lie in the range [2, 36]", radix);
     }
 
@@ -252,13 +252,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
 
     let mut deccum;
 
-    let (limit_digits, max_digits, exact) = match digits {
-        DigAll          => (false, 0u, false),
-        DigMax(count)   => (true, count, false),
-        DigExact(count) => (true, count, true)
-    };
-
-    // First emitt the non-fractional part, looping at least once to make
+    // First emit the non-fractional part, looping at least once to make
     // sure at least a `0` gets emitted.
     deccum = num.round(RoundToZero);
     loop {
@@ -288,32 +282,40 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         if deccum == _0 { break; }
     }
 
-    // Decide what sign to put in front, and where the
-    // actual digits start in `buf`:
-    let digits_start = match sign {
-        SignNone => { 0 }
+    // If limited digits, calculate one digit more for rounding.
+    let (limit_digits, digit_count, exact) = match digits {
+        DigAll          => (false, 0u,      false),
+        DigMax(count)   => (true,  count+1, false),
+        DigExact(count) => (true,  count+1, true)
+    };
+
+    // Decide what sign to put in front
+    match sign {
         SignNeg | SignAll if neg => {
             unsafe { // FIXME: Pureness workaround (#4568)
                 buf.push('-' as u8);
             }
-            1
         }
-        SignNeg => { 0 }
         SignAll => {
             unsafe { // FIXME: Pureness workaround (#4568)
                 buf.push('+' as u8);
             }
-            1
         }
-    };
+        _ => ()
+    }
 
     unsafe { // FIXME: Pureness workaround (#4568)
         vec::reverse(buf);
     }
 
-    // Now emitt the fractional part, if any
+    // Remember start of the fractional digits.
+    // Points one beyond end of buf if none get generated,
+    // or at the '.' otherwise.
+    let start_fractional_digits = buf.len();
+
+    // Now emit the fractional part, if any
     deccum = num.fract();
-    if deccum != _0 || (limit_digits && exact && max_digits > 0) {
+    if deccum != _0 || (limit_digits && exact && digit_count > 0) {
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push('.' as u8);
         }
@@ -325,7 +327,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         //   - it's exact
         //   - or it's a maximum, and there are still digits left
         while (!limit_digits && deccum != _0)
-           || (limit_digits && dig < max_digits && (
+           || (limit_digits && dig < digit_count && (
                    exact
                 || (!exact && deccum != _0)
               )
@@ -351,20 +353,73 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
             deccum = deccum.fract();
             dig += 1u;
         }
+
+        // If digits are limited, and that limit has been reached,
+        // cut off the one extra digit, and depending on its value
+        // round the remaining ones.
+        if limit_digits && dig == digit_count {
+            let ascii2value = |chr: u8| {
+                char::to_digit(chr as char, radix).unwrap() as uint
+            };
+            let value2ascii = |val: uint| {
+                char::from_digit(val, radix).unwrap() as u8
+            };
+
+            unsafe { // FIXME: Pureness workaround (#4568)
+                let extra_digit = ascii2value(buf.pop());
+                if extra_digit >= radix / 2 { // -> need to round
+                    let mut i: int = buf.len() as int - 1;
+                    loop {
+                        // If reached left end of number, have to
+                        // insert additional digit:
+                        if i < 0
+                        || buf[i] == '-' as u8
+                        || buf[i] == '+' as u8 {
+                            buf.insert((i + 1) as uint, value2ascii(1));
+                            break;
+                        }
+
+                        // Skip the '.'
+                        if buf[i] == '.' as u8 { i -= 1; loop; }
+
+                        // Either increment the digit,
+                        // or set to 0 if max and carry the 1.
+                        let current_digit = ascii2value(buf[i]);
+                        if current_digit < (radix - 1) {
+                            buf[i] = value2ascii(current_digit+1);
+                            break;
+                        } else {
+                            buf[i] = value2ascii(0);
+                            i -= 1;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // if number of digits is not exact, remove all trailing '0's up to
     // and including the '.'
     if !exact {
-        let mut i = buf.len() - 1;
-        while buf[i] == '0' as u8 && buf.len() > digits_start + 1 {
+        let buf_max_i = buf.len() - 1;
+
+        // index to truncate from
+        let mut i = buf_max_i;
+
+        // discover trailing zeros of fractional part
+        while i > start_fractional_digits && buf[i] == '0' as u8 {
             i -= 1;
         }
 
-        // Truncate only if trailing zeros of *fractional* part:
-        if buf[i] == '.' as u8 {
-            i -= 1;
-            buf = buf.slice(0, i + 1);
+        // Only attempt to truncate digits if buf has fractional digits
+        if i >= start_fractional_digits {
+            // If buf ends with '.', cut that too.
+            if buf[i] == '.' as u8 { i -= 1 }
+
+            // only resize buf if we actually remove digits
+            if i < buf_max_i {
+                buf = buf.slice(0, i + 1);
+            }
         }
     }
 
@@ -414,9 +469,9 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - `empty_zero` - Whether to accept a empty `buf` as a 0 or not.
  *
  * # Return value
- * Returns `Some(n)` if `buf` successfully parses to a number n, or `None` if
- * `buf`s content is not parsable, depending on the constraints set by the
- * other arguments.
+ * Returns `Some(n)` if `buf` parses to a number n without overflowing, and
+ * `None` otherwise, depending on the constraints set by the remaining
+ * arguments.
  *
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
@@ -431,7 +486,7 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Could accept option to allow ignoring underscores, allowing for numbers
  *   formated like `FF_AE_FF_FF`.
  */
-pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
+pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
@@ -482,16 +537,19 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
         }
     }
 
-    let (start, sign) = match buf[0] {
+    let (start, accum_positive) = match buf[0] {
       '-' as u8 if !negative => return None,
-      '-' as u8 => (1u, -_1),
-      '+' as u8 => (1u,  _1),
-       _        => (0u,  _1)
+      '-' as u8 => (1u, false),
+      '+' as u8 => (1u, true),
+       _        => (0u, true)
     };
 
-    let mut accum     = _0;
-    let mut i         = start;
-    let mut exp_found = false;
+    // Initialize accumulator with signed zero for floating point parsing to
+    // work
+    let mut accum      = if accum_positive { _0 } else { -_1 * _0};
+    let mut last_accum = accum; // Necessary to detect overflow
+    let mut i          = start;
+    let mut exp_found  = false;
 
     // Parse integer part of number
     while i < len {
@@ -499,8 +557,20 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
 
         match char::to_digit(c, radix) {
             Some(digit) => {
-                accum *= radix_gen;                   // move accum one left
-                accum += Num::from_int(digit as int); // add current digit
+                // shift accum one digit left
+                accum *= radix_gen;
+
+                // add/subtract current digit depending on sign
+                if accum_positive {
+                    accum += Num::from_int(digit as int);
+                } else {
+                    accum -= Num::from_int(digit as int);
+                }
+
+                // Detect overflow by comparing to last value
+                if accum_positive && accum < last_accum { return None; }
+                if !accum_positive && accum > last_accum { return None; }
+                last_accum = accum;
             }
             None => match c {
                 'e' | 'E' | 'p' | 'P' => {
@@ -528,8 +598,20 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
 
             match char::to_digit(c, radix) {
                 Some(digit) => {
+                    // Decrease power one order of magnitude
                     power /= radix_gen;
-                    accum += Num::from_int::<T>(digit as int) * power;
+
+                    // add/subtract current digit depending on sign
+                    if accum_positive {
+                        accum += Num::from_int::<T>(digit as int) * power;
+                    } else {
+                        accum -= Num::from_int::<T>(digit as int) * power;
+                    }
+
+                    // Detect overflow by comparing to last value
+                    if accum_positive && accum < last_accum { return None; }
+                    if !accum_positive && accum > last_accum { return None; }
+                    last_accum = accum;
                 }
                 None => match c {
                     'e' | 'E' | 'p' | 'P' => {
@@ -581,7 +663,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
         }
     }
 
-    Some(sign * accum * multiplier)
+    Some(accum * multiplier)
 }
 
 /**
@@ -589,7 +671,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Copy>(
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn from_str_common<T: Num Zero One Copy>(
+pub pure fn from_str_common<T: Num Zero One Ord Copy>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {

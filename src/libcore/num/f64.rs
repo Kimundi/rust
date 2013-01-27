@@ -441,7 +441,7 @@ pub pure fn to_str_digits(num: f64, dig: uint) -> ~str {
 
 impl f64: to_str::ToStr {
     #[inline(always)]
-    pure fn to_str() -> ~str { to_str(self) }
+    pure fn to_str() -> ~str { to_str_digits(self, 8) }
 }
 
 impl f64: num::ToStrRadix {

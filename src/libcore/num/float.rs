@@ -184,7 +184,7 @@ pub pure fn to_str_digits(num: float, digits: uint) -> ~str {
 
 impl float: to_str::ToStr {
     #[inline(always)]
-    pure fn to_str() -> ~str { to_str(self) }
+    pure fn to_str() -> ~str { to_str_digits(self, 8) }
 }
 
 impl float: num::ToStrRadix {
@@ -523,11 +523,11 @@ pub fn test_from_str_hex() {
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str_hex(~"-0") {
-       Some(v) if v == 0. => assert is_negative(v),
+       Some(v) if is_zero(v) => assert is_negative(v),
        _ => fail
    }
    match from_str_hex(~"0") {
-       Some(v) if v == 0. => assert is_positive(v),
+       Some(v) if is_zero(v) => assert is_positive(v),
        _ => fail
    }
    assert from_str_hex(~"e") == Some(14.);

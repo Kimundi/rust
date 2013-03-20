@@ -218,7 +218,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     let col = col.to_uint();
     if all_whitespace(s, 0u, uint::min(len, col)) {
         if col < len {
-            s1 = str::slice(s, col, len);
+            s1 = str::slice(s, col, len).to_owned();
         } else { s1 = ~""; }
     } else { s1 = /*bad*/ copy s; }
     debug!("pushing line: %s", s1);

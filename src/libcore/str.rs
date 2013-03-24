@@ -1142,13 +1142,14 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) {
 /// Iterate over each char of a string, without allocating
 #[inline(always)]
 pub fn each_char(s: &str, it: &fn(char) -> bool) {
-    let mut i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return; }
-        i = next;
-    }
+    each_chari(s, |_i, c| it(c))
+    //let mut i = 0;
+    //let len = len(s);
+    //while i < len {
+    //    let CharRange {ch, next} = char_range_at(s, i);
+    //    if !it(ch) { return; }
+    //    i = next;
+    //}
 }
 
 /// Iterates over the chars in a string, with indices

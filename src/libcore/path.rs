@@ -381,8 +381,9 @@ impl ToStr for PosixPath {
 impl GenericPath for PosixPath {
 
     fn from_str(s: &str) -> PosixPath {
-        let mut components = ~[];
-        for str::each_split_nonempty(s, |c| c == '/') |s| { components.push(s.to_owned()) }
+        let mut components = str::debug::split_nonempty(s, |c| c == '/');
+        //let mut components = ~[];
+        //for str::each_split_nonempty(s, |c| c == '/') |s| { components.push(s.to_owned()) }
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
                            components: components }
@@ -505,10 +506,11 @@ impl GenericPath for PosixPath {
     fn push_many(&self, cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
-            }
+            let mut ss = str::debug::split_nonempty(*e, |c| windows::is_sep(c as u8));
+            //let mut ss = ~[];
+            //for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
+            //    ss.push(s.to_owned())
+            //}
             unsafe { v.push_all_move(ss); }
         }
         PosixPath { is_absolute: self.is_absolute,
@@ -517,10 +519,11 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
-        }
+        let mut ss = str::debug::split_nonempty(s, |c| windows::is_sep(c as u8));
+        //let mut ss = ~[];
+        //for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
+        //    ss.push(s.to_owned())
+        //}
         unsafe { v.push_all_move(ss); }
         PosixPath { components: v, ..copy *self }
     }
@@ -595,10 +598,11 @@ impl GenericPath for WindowsPath {
           }
         }
 
-        let mut components = ~[];
-        for str::each_split_nonempty(rest, |c| windows::is_sep(c as u8)) |s| {
-            components.push(s.to_owned())
-        }
+        let mut components = str::debug::split_nonempty(rest, |c| windows::is_sep(c as u8));
+        //let mut components = ~[];
+        //for str::each_split_nonempty(rest, |c| windows::is_sep(c as u8)) |s| {
+        //    components.push(s.to_owned())
+        //}
         let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
         return WindowsPath { host: host,
                              device: device,
@@ -766,10 +770,11 @@ impl GenericPath for WindowsPath {
     fn push_many(&self, cs: &[~str]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
-            }
+            let mut ss = str::debug::split_nonempty(*e, |c| windows::is_sep(c as u8));
+            //let mut ss = ~[];
+            //for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
+            //    ss.push(s.to_owned())
+            //}
             unsafe { v.push_all_move(ss); }
         }
         // tedious, but as-is, we can't use ..self
@@ -783,10 +788,11 @@ impl GenericPath for WindowsPath {
 
     fn push(&self, s: &str) -> WindowsPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
-        }
+        let mut ss = str::debug::split_nonempty(s, |c| windows::is_sep(c as u8));
+        //let mut ss = ~[];
+        //for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
+        //    ss.push(s.to_owned())
+        //}
         unsafe { v.push_all_move(ss); }
         return WindowsPath { components: v, ..copy *self }
     }

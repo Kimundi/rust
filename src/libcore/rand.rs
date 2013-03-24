@@ -327,9 +327,10 @@ impl RngUtil for @Rng {
      */
     fn gen_char_from(&self, chars: &str) -> char {
         fail_unless!(!chars.is_empty());
-        let mut cs = ~[];
-        for str::each_char(chars) |c| { cs.push(c) }
-        self.choose(cs)
+        self.choose(str::debug::chars(chars))
+        //let mut cs = ~[];
+        //for str::each_char(chars) |c| { cs.push(c) }
+        //self.choose(cs)
     }
 
     /// Return a random bool

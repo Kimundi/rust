@@ -1696,8 +1696,9 @@ pub impl Resolver {
                         entry: %s (%?)",
                     path_string, def_like);
 
-            let mut pieces = ~[];
-            for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
+            let mut pieces = str::debug::split_str(path_string, "::");
+            //let mut pieces = ~[];
+            //for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 

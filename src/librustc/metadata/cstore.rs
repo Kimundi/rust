@@ -120,9 +120,9 @@ pub fn get_used_libraries(cstore: @mut CStore) -> ~[~str] {
 }
 
 pub fn add_used_link_args(cstore: @mut CStore, args: &str) {
-    for args.each_split_char(' ') |s| {
-        cstore.used_link_args.push(s.to_owned());
-    }
+    let mut ss = ~[];
+    for args.each_split_char(' ') |s| { ss.push(s.to_owned()) }
+    cstore.used_link_args.push_all(ss);
 }
 
 pub fn get_used_link_args(cstore: @mut CStore) -> ~[~str] {

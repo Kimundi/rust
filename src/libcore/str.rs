@@ -1043,35 +1043,6 @@ pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// NOTE: Remove afterwards
-/* /// Apply a function to each substring after splitting by character
-pub fn split_char_each(ss: &str, cc: char, ff: &fn(v: &str) -> bool) {
-    vec::each(split_char(ss, cc), |s| ff(*s))
-}
-
-**
- * Apply a function to each substring after splitting by character, up to
- * `count` times
- *
-pub fn splitn_char_each(ss: &str, sep: char, count: uint,
-                         ff: &fn(v: &str) -> bool) {
-    vec::each(splitn_char(ss, sep, count), |s| ff(*s))
-}
-
-/ Apply a function to each word
-pub fn words_each(ss: &str, ff: &fn(v: &str) -> bool) {
-    vec::each(words(ss), |s| ff(*s))
-}
-
-**
- * Apply a function to each line (by '\n')
- *
-pub fn lines_each(ss: &str, ff: &fn(v: &str) -> bool) {
-    vec::each(lines(ss), |s| ff(*s))
-} */
-/////////////////////////////////////////////////////////////////////////////////////////////////
-
 /*
 Section: Searching
 */

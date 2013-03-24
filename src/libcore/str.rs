@@ -67,6 +67,150 @@ impl ToStr for @str {
     fn to_str(&self) -> ~str { from_slice(*self) }
 }
 
+pub mod debug {
+    use super::*;
+    use vec;
+
+    pub fn split_char(s: &str, sep: char) -> ~[~str] {
+        split_char_inner(s, sep, len(s), true, true)
+    }
+
+    pub fn splitn_char(s: &str, sep: char, count: uint) -> ~[~str] {
+        split_char_inner(s, sep, count, true, true)
+    }
+
+    fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool,
+                    allow_trailing_empty: bool) -> ~[~str] {
+        if sep < 128u as char {
+            let b = sep as u8, l = len(s);
+            let mut result = ~[], done = 0u;
+            let mut i = 0u, start = 0u;
+            while i < l && done < count {
+                if s[i] == b {
+                    if allow_empty || start < i {
+                        unsafe {
+                            result.push(raw::slice_bytes_unique(s, start, i));
+                        }
+                    }
+                    start = i + 1u;
+                    done += 1u;
+                }
+                i += 1u;
+            }
+            // only push a non-empty trailing substring
+            if allow_trailing_empty || start < l {
+                unsafe { result.push(raw::slice_bytes_unique(s, start, l) ) };
+            }
+            result
+        } else {
+            split_inner(s, |cur| cur == sep, count, allow_empty, allow_trailing_empty)
+        }
+    }
+
+    pub fn split_nonempty(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
+        split_inner(s, sepfn, len(s), false, false)
+    }
+
+    fn split_inner(s: &str, sepfn: &fn(cc: char) -> bool, count: uint,
+               allow_empty: bool, allow_trailing_empty: bool) -> ~[~str] {
+        let l = len(s);
+        let mut result = ~[], i = 0u, start = 0u, done = 0u;
+        while i < l && done < count {
+            let CharRange {ch, next} = char_range_at(s, i);
+            if sepfn(ch) {
+                if allow_empty || start < i {
+                    unsafe {
+                        result.push(raw::slice_bytes_unique(s, start, i));
+                    }
+                }
+                start = next;
+                done += 1u;
+            }
+            i = next;
+        }
+        if allow_trailing_empty || start < l {
+            unsafe {
+                result.push(raw::slice_bytes_unique(s, start, l));
+            }
+        }
+        result
+    }
+
+    pub fn split_str(s: &'a str, sep: &'b str) -> ~[~str] {
+        let mut result = ~[];
+        do iter_between_matches(s, sep) |from, to| {
+            unsafe { result.push(raw::slice_bytes_unique(s, from, to)); }
+        }
+        result
+    }
+
+    pub fn lines_any(s: &str) -> ~[~str] {
+        vec::map(lines(s), |s| {
+            let l = len(*s);
+            let mut cp = copy *s;
+            if l > 0u && s[l - 1u] == '\r' as u8 {
+                unsafe { raw::set_len(&mut cp, l - 1u); }
+            }
+            cp
+        })
+    }
+
+    pub fn chars(s: &str) -> ~[char] {
+        let mut buf = ~[], i = 0;
+        let len = len(s);
+        while i < len {
+            let CharRange {ch, next} = char_range_at(s, i);
+            unsafe { buf.push(ch); }
+            i = next;
+        }
+        buf
+    }
+
+    fn iter_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+        let sep_len = len(sep), l = len(s);
+        fail_unless!(sep_len > 0u);
+        let mut i = 0u, match_start = 0u, match_i = 0u;
+
+        while i < l {
+            if s[i] == sep[match_i] {
+                if match_i == 0u { match_start = i; }
+                match_i += 1u;
+                // Found a match
+                if match_i == sep_len {
+                    f(match_start, i + 1u);
+                    match_i = 0u;
+                }
+                i += 1u;
+            } else {
+                // Failed match, backtrack
+                if match_i > 0u {
+                    match_i = 0u;
+                    i = match_start + 1u;
+                } else {
+                    i += 1u;
+                }
+            }
+        }
+    }
+
+    fn iter_between_matches(s: &'a str, sep: &'b str, f: &fn(uint, uint)) {
+        let mut last_end = 0u;
+        do iter_matches(s, sep) |from, to| {
+            f(last_end, from);
+            last_end = to;
+        }
+        f(last_end, len(s));
+    }
+
+    pub fn lines(s: &str) -> ~[~str] {
+        split_char_no_trailing(s, '\n')
+    }
+
+    pub fn split_char_no_trailing(s: &str, sep: char) -> ~[~str] {
+        split_char_inner(s, sep, len(s), true, false)
+    }
+}
+
 /**
  * Convert a byte to a UTF-8 string
  *

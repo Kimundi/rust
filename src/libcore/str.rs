@@ -56,7 +56,7 @@ pub fn from_slice(s: &str) -> ~str {
 
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { from_slice(*self) }
+    fn to_str(&self) -> ~str { copy *self /*from_slice(*self)*/ }
 }
 impl ToStr for &'self str {
     #[inline(always)]
@@ -2639,7 +2639,8 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        from_slice(*self)
+        self.to_str()  // hilarious
+        //from_slice(*self)
     }
 }
 

@@ -1616,6 +1616,14 @@ pub enum MatchRes {
     MissSkip(uint),
 }
 
+pub struct MatchCtxt {
+    chr: char,
+    offset_bytes: uint,
+    offset_chars: uint,
+    base_offset_bytes: uint,
+    base_offset_chars: uint,
+}
+
 /**
  * Iterates over each pair of (index, substring) of a string that matches with the given
  * substring matching function.
@@ -1652,43 +1660,88 @@ pub enum MatchRes {
  *   return `MissSkip(n)` to directly skip them.
  */
 pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
-            matchf: &fn(chr_offset: uint, chr: char) -> MatchRes,
+            matchf: &fn(&MatchCtxt) -> MatchRes,
             it: &fn(idx: uint, subs: &'a str) -> bool ) {
     let mut i = 0;
-    let mut c;
-    let mut match_start = 0;
-    let mut match_char_offset = 0;
+    let mut last_start_i = 0;
+    let mut last_start_chr_offset = 0;
+    //let mut c;
+    //let mut match_char_offset = 0;
+    let mut ctxt = MatchCtxt {
+        chr: '♥',
+        offset_bytes: 0,
+        offset_chars: 0,
+        base_offset_bytes: 0,
+        base_offset_chars: 0
+    };
 
     while i < s.len() {
-        c = char_range_at(s, i).ch;
-        match matchf(match_char_offset, c) {
+        ctxt.chr = char_range_at(s, i).ch;
+        //match matchf(match_char_offset, c) {ctxt
+        match matchf(&ctxt) {
             Match           => {
-                i = char_range_at(s, i).next;
-                match_char_offset += 1;
+                let new_i = char_range_at(s, i).next;
+                let byte_diff = (new_i - i);
+
+                ctxt.offset_chars += 1;
+                ctxt.offset_bytes += byte_diff;
+                ctxt.base_offset_chars += 1;
+                ctxt.base_offset_bytes += byte_diff;
+
+                i = new_i;
             }
             MatchEnd        => {
-                if !it(match_start, slice(s, match_start, i+1)) { return; }
-                i = char_range_at(s, if overlap {match_start} else {i} ).next;
-                match_start = i;
-                match_char_offset = 0;
+                let next_c_i = char_range_at(s,  i).next;
+                if !it(last_start_i, slice(s, last_start_i, next_c_i)) { return; }
+                if overlap {
+                    i = char_range_at(s,  last_start_i).next;
+                    last_start_chr_offset = last_start_chr_offset + 1;
+                } else {
+                    i = next_c_i;
+                    last_start_chr_offset = last_start_chr_offset + ctxt.offset_chars + 1;
+                }
+                last_start_i = i;
+
+                ctxt.base_offset_chars = last_start_chr_offset;
+                ctxt.base_offset_bytes = i;
+                ctxt.offset_chars = 0;
+                ctxt.offset_bytes = 0;
             }
             MatchCont       => {
-                if !it(match_start, slice(s, match_start, i+1)) { return; }
-                i = char_range_at(s, i).next;
-                match_char_offset += 1;
+                let next_c_i = char_range_at(s,  i).next;
+                if !it(last_start_i, slice(s, last_start_i, next_c_i)) { return; }
+                let new_i = next_c_i;
+                let byte_diff = (new_i - i);
+
+                ctxt.offset_chars += 1;
+                ctxt.offset_bytes += byte_diff;
+                ctxt.base_offset_chars += 1;
+                ctxt.base_offset_bytes += byte_diff;
+
+                i = new_i;
             }
             Miss            => {
-                i = char_range_at(s, match_start).next;
-                match_start = i;
-                match_char_offset = 0;
+                i = char_range_at(s, last_start_i).next;
+                last_start_i = i;
+                last_start_chr_offset += 1;
+
+                ctxt.base_offset_chars = last_start_chr_offset;
+                ctxt.base_offset_bytes = i;
+                ctxt.offset_chars = 0;
+                ctxt.offset_bytes = 0;
             }
             MissSkip(count) => {
                 for (count+1).times {
-                    i = char_range_at(s, match_start).next;
+                    i = char_range_at(s, last_start_i).next;
                     if i >= s.len() { return; }
-                    match_start = i;
+                    last_start_i = i;
+                    last_start_chr_offset += 1;
+
+                    ctxt.base_offset_chars = last_start_chr_offset;
+                    ctxt.base_offset_bytes = i;
                 }
-                match_char_offset = 0;
+                ctxt.offset_chars = 0;
+                ctxt.offset_bytes = 0;
             }
         }
     }
@@ -3853,13 +3906,13 @@ mod tests {
     #[test]
     fn test_each_scan_match() {
         // Keyboard SMASH!!!
-        let s = "ae inrartaiian aitartiaertiae sesesnirerr ierrrriaesirgr gf ae aacaacaad";
+        let s = "aλ inrartaiian aitartiaλrtiaλ sesesnirerr ierrrriaλsirgr gf aλ aacaacaad";
         debug!("%?", s);
 
         let fs = [
             // match occurrences of string "aac" and "aacaad", reusing a previous prefix match
-            (|offset, c| {
-                match (offset, c) {
+            (|ctx: &MatchCtxt| {
+                match (ctx.offset_chars, ctx.chr) {
                     (0, 'a') => Match,
                     (1, 'a') => Match,
                     (2, 'c') => MatchCont,
@@ -3869,11 +3922,11 @@ mod tests {
                     (5, 'd') => MatchEnd,
                     _        => Miss
                 }
-            }, false, &[(63, "aac"), (66, "aac"), (66, "aacaad")]),
+            }, false, &[(68, "aac"), (71, "aac"), (71, "aacaad")]),
 
             // match a four letter substring starting and ending with 'a'
-            (|offset, c| {
-                match (offset, c) {
+            (|ctx| {
+                match (ctx.offset_chars, ctx.chr) {
                     (0, 'a') => Match,
                     (1,  _ ) => Match,
                     (2,  _ ) => Match,
@@ -3881,12 +3934,12 @@ mod tests {
                     _        => Miss
                 }
             }, true, // Find overlapping
-            &[( 6, "arta"), ( 9, "aiia"), (12, "an a"), (15, "aita"), (60, "ae a"),
-            (63, "aaca"), (64, "acaa"), (66, "aaca"), (67, "acaa")]),
+            &[( 7, "arta"), (10, "aiia"), (13, "an a"), (16, "aita"), (64, "aλ a"),
+            (68, "aaca"), (69, "acaa"), (71, "aaca"), (72, "acaa")]),
 
             // match a four letter substring starting and ending with 'a'
-            (|offset, c| {
-                match (offset, c) {
+            (|ctx| {
+                match (ctx.offset_chars, ctx.chr) {
                     (0, 'a') => Match,
                     (1,  _ ) => Match,
                     (2,  _ ) => Match,
@@ -3894,36 +3947,36 @@ mod tests {
                     _        => Miss
                 }
             }, false, // Find non-overlapping
-            &[( 6, "arta"), (12, "an a"), (60, "ae a"),
-            (64, "acaa"), (66, "aaca"), (67, "acaa")]),
+            &[( 7, "arta"), (13, "an a"), (64, "aλ a"),
+            (69, "acaa"), (71, "aaca"), (72, "acaa")]),
 
             // match a 12 char long substring starting and ending with whitespace
-            (|offset, c| {
-                match (offset, c) {
+            (|ctx| {
+                match (ctx.offset_chars, ctx.chr) {
                     ( 0, c) if char::is_whitespace(c) => Match,
                     ( n, _) if n > 0 && n < 12        => Match,
                     (12, c) if char::is_whitespace(c) => MatchEnd,
                     _                                 => Miss
                 }
-            }, true, &[( 2, " inrartaiian "), (29, " sesesnirerr ")]),
+            }, true, &[( 3, " inrartaiian "), (32, " sesesnirerr ")]),
 
-            // match all occurence of "ae"
-            (|offset, c| {
-                let cs = to_chars("ae");
-                if offset+1 == cs.len() && cs[offset] == c   { MatchEnd }
-                else if offset < cs.len() && cs[offset] == c { Match }
+            // match all occurence of "aλ"
+            (|ctx| {
+                let cs = str::to_chars("aλ");
+                if ctx.offset_chars+1 == cs.len() && cs[ctx.offset_chars] == ctx.chr   { MatchEnd }
+                else if ctx.offset_chars < cs.len() && cs[ctx.offset_chars] == ctx.chr { Match }
                 else                                         { Miss }
-            }, true, &[(0, "ae"), (22, "ae"), (27, "ae"), (49, "ae"), (60, "ae")]),
+            }, true, &[(0, "aλ"), (23, "aλ"), (29, "aλ"), (52, "aλ"), (64, "aλ")]),
         ];
 
         // compare matched - expected
         for fs.each |e| {
             let (f, overlap, vs) = *e;
-            let f = |o, c| {
-                let fr = f(o, c);
-                debug!("match on (%?, %?) -> %?", o, c, fr);
+            /*let f = |ctx| {
+                let fr = f(ctx);
+                debug!("match on %? -> %?", ctx, fr);
                 fr
-            };
+            };*/
             let mut i = 0;
             for each_scan_match(s, overlap, f) |idx, s| {
                 debug!("(%?, %?), ", idx, s);

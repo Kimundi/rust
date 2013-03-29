@@ -1608,6 +1608,92 @@ pub fn len(s: &str) -> uint {
 /// Returns the number of characters that a string holds
 pub fn char_len(s: &str) -> uint { count_chars(s, 0u, len(s)) }
 
+pub enum MatchRes {
+    Match,
+    MatchEnd,
+    MatchCont,
+    Miss,
+    MissSkip(uint),
+}
+
+/**
+ * Iterates over each pair of (index, substring) of a string that matches with the given
+ * substring matching function.
+ *
+ * # Arguments
+ *
+ * - `s` - the string to scan through.
+ * - `overlap` - whether to search for all possible matches, or just
+ *               those that don't overlap with each other.
+ * - `matchf` - the matching function.
+ * - `it` - the iterator function.
+ *
+ * Starting from each possible character-offset, this function tries to
+ * match a sequence of characters using the given matching function, which gets repeatedly
+ * called with two arguments:
+ *
+ * - `chr_offset: uint` gives the offset in characters relative to the start
+ *                      of the current substring it tries to match on.
+ * - `chr: char`        gives the character at that position.
+ *
+ * In order for that fn to identify a match, it has to follow the following protocol:
+ *
+ * - if `chr` is allowed to appear at position `chr_offset` in all strings you want
+ *   to accept, return `Match`.
+ * - if `chr` also signals the end of the string you want to match, return
+ *   `MatchEnd` instead.
+ * - if `chr` signals the end of a string you want to match, but also the prefix of another one,
+ *   return `MatchCont` to call the iterator fn and also continue scanning.
+ *   (only works with `overlap == true`)
+ * - if `chr` invalidates the current substring as a possible match, return `Miss` to
+ *   start the next substring matching sequence.
+ * - if `chr` invalidates the current substring as a possible match, and you've got enough
+ *   information to know that the next `n` matching sequences will also fail,
+ *   return `MissSkip(n)` to directly skip them.
+ */
+pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
+            matchf: &fn(chr_offset: uint, chr: char) -> MatchRes,
+            it: &fn(idx: uint, subs: &'a str) -> bool ) {
+    let mut i = 0;
+    let mut c;
+    let mut match_start = 0;
+    let mut match_char_offset = 0;
+
+    while i < s.len() {
+        c = char_range_at(s, i).ch;
+        match matchf(match_char_offset, c) {
+            Match           => {
+                i = char_range_at(s, i).next;
+                match_char_offset += 1;
+            }
+            MatchEnd        => {
+                if !it(match_start, slice(s, match_start, i+1)) { return; }
+                i = char_range_at(s, if overlap {match_start} else {i} ).next;
+                match_start = i;
+                match_char_offset = 0;
+            }
+            MatchCont       => {
+                if !it(match_start, slice(s, match_start, i+1)) { return; }
+                i = char_range_at(s, i).next;
+                match_char_offset += 1;
+            }
+            Miss            => {
+                i = char_range_at(s, match_start).next;
+                match_start = i;
+                match_char_offset = 0;
+            }
+            MissSkip(count) => {
+                for (count+1).times {
+                    i = char_range_at(s, match_start).next;
+                    if i >= s.len() { return; }
+                    match_start = i;
+                }
+                match_char_offset = 0;
+            }
+        }
+    }
+}
+
 /*
 Section: Misc
 */
@@ -3764,4 +3850,94 @@ mod tests {
         assert!(char_range_at_reverse("abc", 0).next == 0);
     }
 
+    #[test]
+    fn test_each_scan_match() {
+        // Keyboard SMASH!!!
+        let s = "ae inrartaiian aitartiaertiae sesesnirerr ierrrriaesirgr gf ae aacaacaad";
+        debug!("%?", s);
+
+        let fs = [
+            // match occurrences of string "aac" and "aacaad", reusing a previous prefix match
+            (|offset, c| {
+                match (offset, c) {
+                    (0, 'a') => Match,
+                    (1, 'a') => Match,
+                    (2, 'c') => MatchCont,
+                    (3, 'a') => Match,
+                    (4, 'a') => Match,
+                    (5, 'c') => MissSkip(2),
+                    (5, 'd') => MatchEnd,
+                    _        => Miss
+                }
+            }, false, &[(63, "aac"), (66, "aac"), (66, "aacaad")]),
+
+            // match a four letter substring starting and ending with 'a'
+            (|offset, c| {
+                match (offset, c) {
+                    (0, 'a') => Match,
+                    (1,  _ ) => Match,
+                    (2,  _ ) => Match,
+                    (3, 'a') => MatchEnd,
+                    _        => Miss
+                }
+            }, true, // Find overlapping
+            &[( 6, "arta"), ( 9, "aiia"), (12, "an a"), (15, "aita"), (60, "ae a"),
+            (63, "aaca"), (64, "acaa"), (66, "aaca"), (67, "acaa")]),
+
+            // match a four letter substring starting and ending with 'a'
+            (|offset, c| {
+                match (offset, c) {
+                    (0, 'a') => Match,
+                    (1,  _ ) => Match,
+                    (2,  _ ) => Match,
+                    (3, 'a') => MatchEnd,
+                    _        => Miss
+                }
+            }, false, // Find non-overlapping
+            &[( 6, "arta"), (12, "an a"), (60, "ae a"),
+            (64, "acaa"), (66, "aaca"), (67, "acaa")]),
+
+            // match a 12 char long substring starting and ending with whitespace
+            (|offset, c| {
+                match (offset, c) {
+                    ( 0, c) if char::is_whitespace(c) => Match,
+                    ( n, _) if n > 0 && n < 12        => Match,
+                    (12, c) if char::is_whitespace(c) => MatchEnd,
+                    _                                 => Miss
+                }
+            }, true, &[( 2, " inrartaiian "), (29, " sesesnirerr ")]),
+
+            // match all occurence of "ae"
+            (|offset, c| {
+                let cs = to_chars("ae");
+                if offset+1 == cs.len() && cs[offset] == c   { MatchEnd }
+                else if offset < cs.len() && cs[offset] == c { Match }
+                else                                         { Miss }
+            }, true, &[(0, "ae"), (22, "ae"), (27, "ae"), (49, "ae"), (60, "ae")]),
+        ];
+
+        // compare matched - expected
+        for fs.each |e| {
+            let (f, overlap, vs) = *e;
+            let f = |o, c| {
+                let fr = f(o, c);
+                debug!("match on (%?, %?) -> %?", o, c, fr);
+                fr
+            };
+            let mut i = 0;
+            for each_scan_match(s, overlap, f) |idx, s| {
+                debug!("(%?, %?), ", idx, s);
+                if i >= vs.len() {
+                    fail!(fmt!("got (%?, %?), expected no more", idx, s));
+                }
+                let (idx_c, s_c) = vs[i];
+                if (idx, s) != (idx_c, s_c) {
+                    fail!(fmt!("got (%?, %?), expected (%? ,%?)", idx, s, idx_c, s_c));
+                }
+
+                i += 1;
+            }
+        }
+
+    }
 }

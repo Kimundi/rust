@@ -754,14 +754,20 @@ pub fn each_split_within<'a>(ss: &'a str,
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
     map(s,
-        |c| unsafe{(libc::tolower(c as libc::c_char)) as char}
+        |c| {
+            assert!(char::is_ascii(c));
+            unsafe{(libc::tolower(c as libc::c_char)) as char}
+        }
     )
 }
 
 /// Convert a string to uppercase. ASCII only
 pub fn to_upper(s: &str) -> ~str {
     map(s,
-        |c| unsafe{(libc::toupper(c as libc::c_char)) as char}
+        |c| {
+            assert!(char::is_ascii(c));
+            unsafe{(libc::toupper(c as libc::c_char)) as char}
+        }
     )
 }
 
@@ -3123,12 +3129,11 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        unsafe {
-            assert!(~"" == map(~"",
-                |c| libc::tolower(c as c_char) as char));
-            assert!(~"ymca" == map(~"YMCA",
-                |c| libc::tolower(c as c_char) as char));
-        }
+        // libc::tolower, and hence str::to_lower
+        // are culturally insensitive: they only work for ASCII
+        // (see Issue #1347)
+        assert!(~"" == to_lower(""));
+        assert!(~"ymca" == to_lower("YMCA"));
     }
 
     #[test]
@@ -3962,10 +3967,16 @@ mod tests {
 
             // match all occurence of "aλ"
             (|ctx| {
-                let cs = str::to_chars("aλ");
-                if ctx.offset_chars+1 == cs.len() && cs[ctx.offset_chars] == ctx.chr   { MatchEnd }
-                else if ctx.offset_chars < cs.len() && cs[ctx.offset_chars] == ctx.chr { Match }
-                else                                         { Miss }
+                let cs = to_chars("aλ");
+                if ctx.offset_chars+1 == cs.len() && cs[ctx.offset_chars] == ctx.chr   {
+                    MatchEnd
+                }
+                else if ctx.offset_chars < cs.len() && cs[ctx.offset_chars] == ctx.chr {
+                    Match
+                }
+                else {
+                    Miss
+                }
             }, true, &[(0, "aλ"), (23, "aλ"), (29, "aλ"), (52, "aλ"), (64, "aλ")]),
         ];
 

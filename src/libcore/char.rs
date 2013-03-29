@@ -15,6 +15,7 @@ use str;
 use u32;
 use uint;
 use unicode;
+use libc;
 
 #[cfg(notest)] use cmp::Eq;
 
@@ -105,6 +106,42 @@ pub fn is_alphanumeric(c: char) -> bool {
 pub fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
+
+pub enum CaseFoldingRule {
+    // NOTE: Add support for locale-dependant case folding
+    // See: http://www.w3.org/International/wiki/Case_folding
+
+    Default,
+    //Locale(&str)
+}
+
+/// Converts a character to its lower case representation, using the given case folding rules
+#[inline(always)]
+pub fn to_lower(c: char, folding_rule: CaseFoldingRule) -> char {
+    match folding_rule {
+        Default if is_ascii(c) => unsafe{(libc::tolower(c as libc::c_char)) as char},
+        Default                => c,
+    }
+}
+
+/// Converts a character to its upper case representation, using the given case folding rules
+#[inline(always)]
+pub fn to_upper(c: char, folding_rule: CaseFoldingRule) -> char {
+    match folding_rule {
+        Default if is_ascii(c) => unsafe{(libc::toupper(c as libc::c_char)) as char},
+        Default                => c,
+    }
+}
+
+/// Converts a character to its lower case representation, using the default (english)
+/// case folding rules
+#[inline(always)]
+pub fn to_lower_default(c: char) -> char { to_lower(c, Default) }
+
+/// Converts a character to its upper case representation, using the default (english)
+/// case folding rules
+#[inline(always)]
+pub fn to_upper_default(c: char) -> char { to_upper(c, Default) }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
@@ -234,7 +271,21 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
-/**
+// NOTE: Add support for non-ascii comparisons
+/// Compares two characters, ignoring case differences.
+/// Currently only works for ascii.
+pub fn eq_ignore_case(c1: char, c2: char) -> bool {
+    if is_ascii(c1) && is_ascii(c2) {
+        unsafe{
+            libc::tolower(c1 as libc::c_char) == libc::tolower(c2 as libc::c_char)
+        }
+    } else {
+        c1 == c2
+    }
+}
+
+/*
+ *
  * Compare two chars
  *
  * # Return value
@@ -334,7 +385,6 @@ fn test_escape_default() {
     assert_eq!(escape_default('\U0001d4b6'), ~"\\U0001d4b6");
 }
 
-
 #[test]
 fn test_escape_unicode() {
     assert_eq!(escape_unicode('\x00'), ~"\\x00");
@@ -343,4 +393,23 @@ fn test_escape_unicode() {
     assert_eq!(escape_unicode('a'), ~"\\x61");
     assert_eq!(escape_unicode('\u011b'), ~"\\u011b");
     assert_eq!(escape_unicode('\U0001d4b6'), ~"\\U0001d4b6");
+}
+
+#[test]
+fn test_eq_ignore_case() {
+    fail_unless!(eq_ignore_case('a', 'A'));
+    fail_unless!(eq_ignore_case('P', 'p'));
+    fail_unless!(eq_ignore_case('.', '.'));
+    fail_unless!(eq_ignore_case('x', 'x'));
+    fail_unless!(eq_ignore_case('X', 'X'));
+    fail_unless!(!eq_ignore_case('a', 'α'));
+    fail_unless!(!eq_ignore_case('P', 'h'));
+    fail_unless!(!eq_ignore_case('.', ':'));
+    fail_unless!(!eq_ignore_case('x', '<'));
+    fail_unless!(!eq_ignore_case('X', 'ä'));
+
+    // NOTE: Uncomment if unicode support
+    //fail_unless!(eq_ignore_case('ö', 'Ö'));
+    //fail_unless!(eq_ignore_case('Ü', 'ü'));
+    //fail_unless!(eq_ignore_case('ω', 'Ω'));
 }

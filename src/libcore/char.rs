@@ -271,6 +271,20 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
+pub fn len_utf8_bytes(c: char) -> uint {
+    static max_one_b: uint = 128u;
+    static max_two_b: uint = 2048u;
+    static max_three_b: uint = 65536u;
+    static max_four_b: uint = 2097152u;
+
+    let code = c as uint;
+    if code < max_one_b { 1u }
+    else if code < max_two_b { 2u }
+    else if code < max_three_b { 3u }
+    else if code < max_four_b { 4u }
+    else { fail!(~"invalid character!") }
+}
+
 // NOTE: Add support for non-ascii comparisons
 /// Compares two characters, ignoring case differences.
 /// Currently only works for ascii.

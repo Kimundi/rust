@@ -755,7 +755,7 @@ pub fn each_split_within<'a>(ss: &'a str,
 pub fn to_lower(s: &str) -> ~str {
     do map(s) |c| {
         assert!(char::is_ascii(c));
-        unsafe{libc::tolower(c as libc::c_char)} as char
+        (unsafe{libc::tolower(c as libc::c_char)}) as char
     }
 }
 
@@ -763,7 +763,7 @@ pub fn to_lower(s: &str) -> ~str {
 pub fn to_upper(s: &str) -> ~str {
     do map(s) |c| {
         assert!(char::is_ascii(c));
-        unsafe{libc::toupper(c as libc::c_char)} as char
+        (unsafe{libc::toupper(c as libc::c_char)}) as char
     }
 }
 
@@ -2206,6 +2206,25 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
 }
 
 /**
+ * Returns the byte offset of an inner slice relative to an enclosing outer slice
+ */
+#[inline(always)]
+pub fn get_offset(outer: &str, inner: &str) -> uint {
+    do as_buf(outer) |a, a_len| {
+        do as_buf(inner) |b, b_len| {
+            let a_start: uint, a_end: uint, b_start: uint, b_end: uint;
+            unsafe {
+                a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
+                b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
+            }
+            assert!(a_start <= b_start);
+            assert!(b_end <= a_end);
+            b_start - a_start
+        }
+    }
+}
+
+/**
  * Reserves capacity for exactly `n` bytes in the given string, not including
  * the null terminator.
  *
@@ -3516,6 +3535,23 @@ mod tests {
                 assert!(*ptr::offset(buf,5u) == 0u8);
             }
         }
+    }
+
+    #[test]
+    fn test_get_offset() {
+        let a = ~"kernelsprite";
+        let b = slice(a, 7, len(a));
+        let c = slice(a, 0, len(a) - 6);
+        assert!(get_offset(a, b) == 7);
+        assert!(get_offset(a, c) == 0);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_get_offset_2() {
+        let a = ~"alchemiter";
+        let b = ~"cruxtruder";
+        get_offset(a, b);
     }
 
     #[test]

@@ -411,19 +411,19 @@ fn test_escape_unicode() {
 
 #[test]
 fn test_eq_ignore_case() {
-    fail_unless!(eq_ignore_case('a', 'A'));
-    fail_unless!(eq_ignore_case('P', 'p'));
-    fail_unless!(eq_ignore_case('.', '.'));
-    fail_unless!(eq_ignore_case('x', 'x'));
-    fail_unless!(eq_ignore_case('X', 'X'));
-    fail_unless!(!eq_ignore_case('a', 'α'));
-    fail_unless!(!eq_ignore_case('P', 'h'));
-    fail_unless!(!eq_ignore_case('.', ':'));
-    fail_unless!(!eq_ignore_case('x', '<'));
-    fail_unless!(!eq_ignore_case('X', 'ä'));
+    assert!(eq_ignore_case('a', 'A'));
+    assert!(eq_ignore_case('P', 'p'));
+    assert!(eq_ignore_case('.', '.'));
+    assert!(eq_ignore_case('x', 'x'));
+    assert!(eq_ignore_case('X', 'X'));
+    assert!(!eq_ignore_case('a', 'α'));
+    assert!(!eq_ignore_case('P', 'h'));
+    assert!(!eq_ignore_case('.', ':'));
+    assert!(!eq_ignore_case('x', '<'));
+    assert!(!eq_ignore_case('X', 'ä'));
 
     // NOTE: Uncomment if unicode support
-    //fail_unless!(eq_ignore_case('ö', 'Ö'));
-    //fail_unless!(eq_ignore_case('Ü', 'ü'));
-    //fail_unless!(eq_ignore_case('ω', 'Ω'));
+    //assert!(eq_ignore_case('ö', 'Ö'));
+    //assert!(eq_ignore_case('Ü', 'ü'));
+    //assert!(eq_ignore_case('ω', 'Ω'));
 }

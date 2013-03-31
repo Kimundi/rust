@@ -753,22 +753,18 @@ pub fn each_split_within<'a>(ss: &'a str,
 
 /// Convert a string to lowercase. ASCII only
 pub fn to_lower(s: &str) -> ~str {
-    map(s,
-        |c| {
-            assert!(char::is_ascii(c));
-            unsafe{(libc::tolower(c as libc::c_char)) as char}
-        }
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        unsafe{libc::tolower(c as libc::c_char)} as char
+    }
 }
 
 /// Convert a string to uppercase. ASCII only
 pub fn to_upper(s: &str) -> ~str {
-    map(s,
-        |c| {
-            assert!(char::is_ascii(c));
-            unsafe{(libc::toupper(c as libc::c_char)) as char}
-        }
-    )
+    do map(s) |c| {
+        assert!(char::is_ascii(c));
+        unsafe{libc::toupper(c as libc::c_char)} as char
+    }
 }
 
 /**
@@ -790,9 +786,9 @@ pub fn replace(s: &str, from: &str, to: &str) -> ~str {
         if first {
             first = false;
         } else {
-            unsafe { push_str(&mut result, to); }
+            push_str(&mut result, to);
         }
-        unsafe { push_str(&mut result, raw::slice_bytes_unique(s, start, end)); }
+        push_str(&mut result, unsafe{raw::slice_bytes(s, start, end)});
     }
     result
 }
@@ -3641,12 +3637,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        unsafe {
-            assert!(~"" == map(~"", |c|
-                libc::toupper(c as c_char) as char));
-            assert!(~"YMCA" == map(~"ymca",
-                                  |c| libc::toupper(c as c_char) as char));
-        }
+        assert!(~"" == map(~"", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert!(~"YMCA" == map(~"ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
@@ -3660,11 +3652,11 @@ mod tests {
 
     #[test]
     fn test_any() {
-        assert!(false  == any(~"", char::is_uppercase));
+        assert!(false == any(~"", char::is_uppercase));
         assert!(false == any(~"ymca", char::is_uppercase));
         assert!(true  == any(~"YMCA", char::is_uppercase));
-        assert!(true == any(~"yMCA", char::is_uppercase));
-        assert!(true == any(~"Ymcy", char::is_uppercase));
+        assert!(true  == any(~"yMCA", char::is_uppercase));
+        assert!(true  == any(~"Ymcy", char::is_uppercase));
     }
 
     #[test]

@@ -271,6 +271,7 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
+/// Returns the amount of bytes this character would need if encoded in utf8
 pub fn len_utf8_bytes(c: char) -> uint {
     static max_one_b: uint = 128u;
     static max_two_b: uint = 2048u;
@@ -298,8 +299,7 @@ pub fn eq_ignore_case(c1: char, c2: char) -> bool {
     }
 }
 
-/*
- *
+/**
  * Compare two chars
  *
  * # Return value

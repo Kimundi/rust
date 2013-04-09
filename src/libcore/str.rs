@@ -2209,7 +2209,7 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
  * Returns the byte offset of an inner slice relative to an enclosing outer slice
  */
 #[inline(always)]
-pub fn get_offset(outer: &str, inner: &str) -> uint {
+pub fn substr_offset(outer: &str, inner: &str) -> uint {
     do as_buf(outer) |a, a_len| {
         do as_buf(inner) |b, b_len| {
             let a_start: uint, a_end: uint, b_start: uint, b_end: uint;
@@ -3538,20 +3538,20 @@ mod tests {
     }
 
     #[test]
-    fn test_get_offset() {
-        let a = ~"kernelsprite";
+    fn test_substr_offset() {
+        let a = "kernelsprite";
         let b = slice(a, 7, len(a));
         let c = slice(a, 0, len(a) - 6);
-        assert!(get_offset(a, b) == 7);
-        assert!(get_offset(a, c) == 0);
+        assert!(substr_offset(a, b) == 7);
+        assert!(substr_offset(a, c) == 0);
     }
 
     #[test]
     #[should_fail]
-    fn test_get_offset_2() {
-        let a = ~"alchemiter";
-        let b = ~"cruxtruder";
-        get_offset(a, b);
+    fn test_substr_offset_2() {
+        let a = "alchemiter";
+        let b = "cruxtruder";
+        substr_offset(a, b);
     }
 
     #[test]

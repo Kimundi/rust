@@ -2209,7 +2209,7 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
  * Returns the byte offset of an inner slice relative to an enclosing outer slice
  */
 #[inline(always)]
-pub fn substr_offset(outer: &str, inner: &str) -> uint {
+pub fn subslice_offset(outer: &str, inner: &str) -> uint {
     do as_buf(outer) |a, a_len| {
         do as_buf(inner) |b, b_len| {
             let a_start: uint, a_end: uint, b_start: uint, b_end: uint;

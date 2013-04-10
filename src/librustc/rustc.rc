@@ -170,7 +170,7 @@ Available lint options:
     let mut max_key = 0;
     for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
     fn padded(max: uint, s: &str) -> ~str {
-        str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
+        str::from_bytes_owned(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
     io::println(fmt!("\nAvailable lint checks:\n"));
     io::println(fmt!("    %s  %7.7s  %s",
@@ -243,7 +243,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
       1u => {
         let ifile = /*bad*/copy matches.free[0];
         if ifile == ~"-" {
-            let src = str::from_bytes(io::stdin().read_whole_stream());
+            let src = str::from_bytes_owned(io::stdin().read_whole_stream());
             str_input(src)
         } else {
             file_input(Path(ifile))

@@ -161,7 +161,7 @@ fn readclose(fd: libc::c_int) -> ~str {
             }
         });
         os::fclose(file);
-        str::from_bytes(buf)
+        str::from_bytes_owned(buf)
     }
 }
 

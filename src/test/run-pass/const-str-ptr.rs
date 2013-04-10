@@ -14,7 +14,7 @@ static b: *u8 = c as *u8;
 
 pub fn main() {
     let foo = &a as *u8;
-    assert!(unsafe { str::raw::from_bytes(a) } == ~"hi\x00");
+    assert!(unsafe { str::raw::from_bytes_owned(a) } == ~"hi\x00");
     assert!(unsafe { str::raw::from_buf(foo) } == ~"hi");
     assert!(unsafe { str::raw::from_buf(b) } == ~"hi");
     assert!(unsafe { *b == a[0] });

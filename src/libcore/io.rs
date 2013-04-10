@@ -589,7 +589,7 @@ impl<T:Reader> ReaderUtil for T {
             }
             bytes.push(ch as u8);
         }
-        str::from_bytes(bytes)
+        str::from_bytes_owned(bytes)
     }
 
     fn read_line(&self) -> ~str {
@@ -1564,7 +1564,7 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
-            result::Ok(str::from_bytes(bytes))
+            result::Ok(str::from_bytes_owned(bytes))
        } else {
            result::Err(file.to_str() + ~" is not UTF-8")
        }

@@ -78,7 +78,7 @@ mod map_reduce {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                match reducers.find(&str::from_bytes(k)) {
+                match reducers.find(&str::from_bytes_owned(k)) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }

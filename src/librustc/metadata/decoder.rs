@@ -162,14 +162,14 @@ fn item_visibility(item: ebml::Doc) -> ast::visibility {
 
 fn item_method_sort(item: ebml::Doc) -> char {
     for reader::tagged_docs(item, tag_item_trait_method_sort) |doc| {
-        return str::from_bytes(reader::doc_data(doc))[0] as char;
+        return str::from_bytes_owned(reader::doc_data(doc))[0] as char;
     }
     return 'r';
 }
 
 fn item_symbol(item: ebml::Doc) -> ~str {
     let sym = reader::get_doc(item, tag_items_data_item_symbol);
-    return str::from_bytes(reader::doc_data(sym));
+    return str::from_bytes_owned(reader::doc_data(sym));
 }
 
 fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
@@ -327,7 +327,7 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
 
 fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     let name = reader::get_doc(item, tag_paths_data_name);
-    intr.intern(@str::from_bytes(reader::doc_data(name)))
+    intr.intern(@str::from_bytes_owned(reader::doc_data(name)))
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
@@ -857,7 +857,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(@str::from_bytes(reader::doc_data(doc))));
+        return Some(intr.intern(@str::from_bytes_owned(reader::doc_data(doc))));
     }
 
     return None;
@@ -982,7 +982,7 @@ fn read_path(d: ebml::Doc) -> (~str, uint) {
     let desc = reader::doc_data(d);
     let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
-    let path = str::from_bytes(pathbytes);
+    let path = str::from_bytes_owned(pathbytes);
 
     (path, pos)
 }
@@ -1025,21 +1025,21 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     let mut items: ~[@ast::meta_item] = ~[];
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::from_bytes(reader::doc_data(nd));
+        let n = str::from_bytes_owned(reader::doc_data(nd));
         items.push(attr::mk_word_item(@n));
     };
     for reader::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::from_bytes(reader::doc_data(nd));
-        let v = str::from_bytes(reader::doc_data(vd));
+        let n = str::from_bytes_owned(reader::doc_data(nd));
+        let v = str::from_bytes_owned(reader::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(@n, @v));
     };
     for reader::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::from_bytes(reader::doc_data(nd));
+        let n = str::from_bytes_owned(reader::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
         items.push(attr::mk_list_item(@n, subitems));
     };
@@ -1108,7 +1108,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
     fn docstr(doc: ebml::Doc, tag_: uint) -> ~str {
-        str::from_bytes(reader::doc_data(reader::get_doc(doc, tag_)))
+        str::from_bytes_owned(reader::doc_data(reader::get_doc(doc, tag_)))
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
@@ -1135,7 +1135,7 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
 pub fn get_crate_hash(data: @~[u8]) -> @~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    @str::from_bytes(reader::doc_data(hashdoc))
+    @str::from_bytes_owned(reader::doc_data(hashdoc))
 }
 
 pub fn get_crate_vers(data: @~[u8]) -> @~str {

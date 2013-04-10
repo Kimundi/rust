@@ -38,20 +38,33 @@ Section: Creating a string
 */
 
 /**
- * Convert a vector of bytes to a UTF-8 string
+ * Convert a vector of bytes to a new UTF-8 string
  *
  * # Failure
  *
  * Fails if invalid UTF-8
  */
-pub fn from_bytes(vv: &const [u8]) -> ~str {
+pub fn from_bytes_owned(vv: &const [u8]) -> ~str {
     assert!(is_utf8(vv));
-    return unsafe { raw::from_bytes(vv) };
+    return unsafe { raw::from_bytes_owned(vv) };
+}
+
+/**
+ * Convert a vector of bytes to a UTF-8 string.
+ * The vector needs to be one byte longer than the string, and ideally ending with a 0 byte.
+ *
+ * # Failure
+ *
+ * Fails if invalid UTF-8
+ */
+pub fn from_bytes_slice_DEBUG<'a>(vv: &'a [u8]) -> &'a str {
+    assert!(is_utf8(vv));
+    return unsafe { raw::from_bytes_slice_DEBUG(vv) };
 }
 
 /// Copy a slice into a new unique str
 pub fn from_slice(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_unique(s, 0, len(s)) }
+    unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
 }
 
 impl ToStr for ~str {
@@ -279,7 +292,7 @@ pub fn pop_char(s: &mut ~str) -> char {
  */
 pub fn shift_char(s: &mut ~str) -> char {
     let CharRange {ch, next} = char_range_at(*s, 0u);
-    *s = unsafe { raw::slice_bytes_unique(*s, next, len(*s)) };
+    *s = unsafe { raw::slice_bytes_owned(*s, next, len(*s)) };
     return ch;
 }
 
@@ -2345,15 +2358,22 @@ pub mod raw {
         from_buf_len(::cast::reinterpret_cast(&c_str), len)
     }
 
-    /// Converts a vector of bytes to a string.
-    pub unsafe fn from_bytes(v: &const [u8]) -> ~str {
+    /// Converts a vector of bytes to a new owned string.
+    pub unsafe fn from_bytes_owned(v: &const [u8]) -> ~str {
         do vec::as_const_buf(v) |buf, len| {
             from_buf_len(buf, len)
         }
     }
 
+    /// Converts a vector of bytes to a string.
+    /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
+    /// the string, if possible ending in a 0 byte.
+    pub unsafe fn from_bytes_slice_DEBUG<'a>(v: &'a [u8]) -> &'a str {
+        cast::transmute(v)
+    }
+
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
+    pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes_owned([u]) }
 
     /// Form a slice from a *u8 buffer of the given length without copying.
     pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
@@ -2373,7 +2393,7 @@ pub mod raw {
      * If begin is greater than end.
      * If end is greater than the length of the string.
      */
-    pub unsafe fn slice_bytes_unique(s: &str, begin: uint, end: uint) -> ~str {
+    pub unsafe fn slice_bytes_owned(s: &str, begin: uint, end: uint) -> ~str {
         do as_buf(s) |sbuf, n| {
             assert!((begin <= end));
             assert!((end <= n));
@@ -2445,7 +2465,7 @@ pub mod raw {
         let len = len(*s);
         assert!((len > 0u));
         let b = s[0];
-        *s = unsafe { raw::slice_bytes_unique(*s, 1u, len) };
+        *s = unsafe { raw::slice_bytes_owned(*s, 1u, len) };
         return b;
     }
 
@@ -3434,14 +3454,14 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_from_bytes() {
+    fn test_unsafe_from_bytes_owned() {
         let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
-        let b = unsafe { raw::from_bytes(a) };
+        let b = unsafe { raw::from_bytes_owned(a) };
         assert!((b == ~"AAAAAAA"));
     }
 
     #[test]
-    fn test_from_bytes() {
+    fn test_from_bytes_owned() {
         let ss = ~"ศไทย中华Việt Nam";
         let bb = ~[0xe0_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
@@ -3454,13 +3474,13 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-        assert!(ss == from_bytes(bb));
+        assert!(ss == from_bytes_owned(bb));
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_from_bytes_fail() {
+    fn test_from_bytes_owned_fail() {
         let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
                   0xe0_u8, 0xb8_u8, 0x97_u8,
@@ -3472,7 +3492,49 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-         let _x = from_bytes(bb);
+         let _x = from_bytes_owned(bb);
+    }
+
+    #[test]
+    fn test_unsafe_from_bytes_slice_DEBUG() {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let b = unsafe { raw::from_bytes_slice_DEBUG(a) };
+        assert_eq!(b, "AAAAAAA");
+    }
+
+    #[test]
+    fn test_from_bytes_slice_DEBUG() {
+        let ss = "ศไทย中华Việt Nam";
+        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8, 0x0_u8];
+
+        assert_eq!(ss, from_bytes_slice_DEBUG(bb));
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_from_bytes_slice_DEBUG_fail() {
+        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8, 0x0_u8];
+
+         let _x = from_bytes_slice_DEBUG(bb);
     }
 
     #[test]
@@ -3538,20 +3600,20 @@ mod tests {
     }
 
     #[test]
-    fn test_substr_offset() {
+    fn test_subslice_offset() {
         let a = "kernelsprite";
         let b = slice(a, 7, len(a));
         let c = slice(a, 0, len(a) - 6);
-        assert!(substr_offset(a, b) == 7);
-        assert!(substr_offset(a, c) == 0);
+        assert!(subslice_offset(a, b) == 7);
+        assert!(subslice_offset(a, c) == 0);
     }
 
     #[test]
     #[should_fail]
-    fn test_substr_offset_2() {
+    fn test_subslice_offset_2() {
         let a = "alchemiter";
         let b = "cruxtruder";
-        substr_offset(a, b);
+        subslice_offset(a, b);
     }
 
     #[test]
@@ -3559,7 +3621,7 @@ mod tests {
         let s1: ~str = ~"All mimsy were the borogoves";
 
         let v: ~[u8] = to_bytes(s1);
-        let s2: ~str = from_bytes(v);
+        let s2: ~str = from_bytes_owned(v);
         let mut i: uint = 0u;
         let n1: uint = len(s1);
         let n2: uint = vec::len::<u8>(v);

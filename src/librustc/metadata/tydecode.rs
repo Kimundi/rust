@@ -99,7 +99,7 @@ pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
 
 fn parse_ident_(st: @mut PState, is_last: @fn(char) -> bool) ->
    ast::ident {
-    let rslt = scan(st, is_last, str::from_bytes);
+    let rslt = scan(st, is_last, str::from_bytes_owned);
     return st.tcx.sess.ident_of(rslt);
 }
 
@@ -452,7 +452,7 @@ fn parse_abi_set(st: @mut PState) -> AbiSet {
     let mut abis = AbiSet::empty();
     while peek(st) != ']' {
         // FIXME(#5422) str API should not force this copy
-        let abi_str = scan(st, |c| c == ',', str::from_bytes);
+        let abi_str = scan(st, |c| c == ',', str::from_bytes_owned);
         let abi = abi::lookup(abi_str).expect(abi_str);
         abis.add(abi);
     }

@@ -120,7 +120,7 @@ fn readclose(fd: c_int) -> ~str {
         let mut buf = ~"";
         while !reader.eof() {
             let bytes = reader.read_bytes(4096u);
-            str::push_str(&mut buf, str::from_bytes(bytes));
+            str::push_str(&mut buf, str::from_bytes_owned(bytes));
         }
         os::fclose(file);
         return buf;

@@ -322,7 +322,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
                                     +path: ~str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
-    let src = @str::from_bytes(srdr.read_whole_stream());
+    let src = @str::from_bytes_owned(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);

@@ -176,7 +176,7 @@ pub mod reader {
         f(vec::slice(*d.data, d.start, d.end))
     }
 
-    pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
+    pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes_owned(doc_data(d)) }
 
     pub fn doc_as_u8(d: Doc) -> u8 {
         assert!(d.end == d.start + 1u);

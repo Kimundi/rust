@@ -306,7 +306,7 @@ fn read_all(rd: @io::Reader) -> ~str {
             wr.write(bytes.slice(0, nread));
         }
     });
-    str::from_bytes(buf)
+    str::from_bytes_owned(buf)
 }
 
 pub struct ProgramOutput {status: int, out: ~str, err: ~str}
@@ -408,7 +408,7 @@ pub fn readclose(fd: c_int) -> ~str {
             }
         });
         os::fclose(file);
-        str::from_bytes(buf)
+        str::from_bytes_owned(buf)
     }
 }
 

@@ -57,9 +57,9 @@ pub fn from_bytes_owned(vv: &const [u8]) -> ~str {
  *
  * Fails if invalid UTF-8
  */
-pub fn from_bytes_slice_DEBUG<'a>(vv: &'a [u8]) -> &'a str {
+pub fn from_bytes_slice<'a>(vv: &'a [u8]) -> &'a str {
     assert!(is_utf8(vv));
-    return unsafe { raw::from_bytes_slice_DEBUG(vv) };
+    return unsafe { raw::from_bytes_slice(vv) };
 }
 
 /// Copy a slice into a new unique str
@@ -2368,7 +2368,7 @@ pub mod raw {
     /// Converts a vector of bytes to a string.
     /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
     /// the string, if possible ending in a 0 byte.
-    pub unsafe fn from_bytes_slice_DEBUG<'a>(v: &'a [u8]) -> &'a str {
+    pub unsafe fn from_bytes_slice<'a>(v: &'a [u8]) -> &'a str {
         cast::transmute(v)
     }
 
@@ -3496,14 +3496,14 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_from_bytes_slice_DEBUG() {
+    fn test_unsafe_from_bytes_slice() {
         let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-        let b = unsafe { raw::from_bytes_slice_DEBUG(a) };
+        let b = unsafe { raw::from_bytes_slice(a) };
         assert_eq!(b, "AAAAAAA");
     }
 
     #[test]
-    fn test_from_bytes_slice_DEBUG() {
+    fn test_from_bytes_slice() {
         let ss = "ศไทย中华Việt Nam";
         let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
@@ -3516,13 +3516,13 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8, 0x0_u8];
 
-        assert_eq!(ss, from_bytes_slice_DEBUG(bb));
+        assert_eq!(ss, from_bytes_slice(bb));
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_from_bytes_slice_DEBUG_fail() {
+    fn test_from_bytes_slice_fail() {
         let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
                   0xe0_u8, 0xb8_u8, 0x97_u8,
@@ -3534,7 +3534,7 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8, 0x0_u8];
 
-         let _x = from_bytes_slice_DEBUG(bb);
+         let _x = from_bytes_slice(bb);
     }
 
     #[test]

@@ -1636,8 +1636,10 @@ pub enum MatchRes {
     MissSkip(uint),
 }
 
-pub struct MatchCtxt {
+pub struct MatchCtx {
     chr: char,
+    last_chr: Option<char>,
+    next_chr: Option<char>,
     offset_bytes: uint,
     offset_chars: uint,
     base_offset_bytes: uint,
@@ -1658,9 +1660,11 @@ pub struct MatchCtxt {
  *
  * Starting from each possible offset-in-characters, this function tries to
  * match a sequence of characters using the given matching function, which gets repeatedly
- * called with an reference to a struct of type `MatchCtxt` containing those fields:
+ * called with an reference to a struct of type `MatchCtx` containing those fields:
  *
  * - `chr`               - the character at the current position in the current substring.
+ * - `last_chr`          - the previous character in the current substring, if any.
+ * - `next_chr`          - the next character in the current substring, if any.
  * - `offset_bytes`      - offset of the current character relative to the start of the
  *                         current substring in bytes.
  * - `offset_chars`      - offset of the current character relative to the start of the
@@ -1689,53 +1693,67 @@ pub struct MatchCtxt {
  *   return `MissSkip(n)` to directly skip them.
  */
 pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
-                           matchf: &fn(&MatchCtxt) -> MatchRes,
+                           matchf: &fn(&MatchCtx) -> MatchRes,
                            it: &fn(start: uint, end: uint) -> bool ) {
     let mut i = 0;
     let mut last_start_i = 0;
     let mut last_start_chr_offset = 0;
-    let mut ctxt = MatchCtxt {
+    let mut ctxt = MatchCtx {
         chr: '♥',
+        last_chr: None,
+        next_chr: if s.len() > 0 { Some(char_range_at(s, 0).ch) } else { None },
         offset_bytes: 0,
         offset_chars: 0,
         base_offset_bytes: 0,
         base_offset_chars: 0
     };
 
+    let incr_offsets = |byte_diff| {
+        ctxt.offset_chars += 1;
+        ctxt.offset_bytes += byte_diff;
+        ctxt.base_offset_chars += 1;
+        ctxt.base_offset_bytes += byte_diff;
+        ctxt.last_chr = Some(ctxt.chr);
+    };
+
+    let reset_offsets = |new_i, new_ci| {
+        ctxt.base_offset_chars = new_ci;
+        ctxt.base_offset_bytes = new_i;
+        ctxt.offset_chars = 0;
+        ctxt.offset_bytes = 0;
+        ctxt.last_chr = None;
+    };
+
     while i < s.len() {
-        ctxt.chr = char_range_at(s, i).ch;
         match matchf(&ctxt) {
             Match => {
-                let new_i = char_range_at(s, i).next;
-                let byte_diff = (new_i - i);
+                let CharRange{ch, next} = char_range_at(s, i);
+                ctxt.chr = ch;
+                let byte_diff = (next - i);
 
-                ctxt.offset_chars += 1;
-                ctxt.offset_bytes += byte_diff;
-                ctxt.base_offset_chars += 1;
-                ctxt.base_offset_bytes += byte_diff;
+                incr_offsets(byte_diff);
 
-                i = new_i;
+                i = next;
             }
             MatchEnd => {
-                let next_c_i = char_range_at(s,  i).next;
-                if !it(last_start_i, next_c_i) { return; }
+                let CharRange{ch, next} = char_range_at(s, i);
+                ctxt.chr = ch;
+                if !it(last_start_i, next) { return; }
                 if overlap {
                     i = char_range_at(s,  last_start_i).next;
                     last_start_chr_offset = last_start_chr_offset + 1;
                 } else {
-                    i = next_c_i;
+                    i = next;
                     last_start_chr_offset = last_start_chr_offset + ctxt.offset_chars + 1;
                 }
                 last_start_i = i;
 
-                ctxt.base_offset_chars = last_start_chr_offset;
-                ctxt.base_offset_bytes = i;
-                ctxt.offset_chars = 0;
-                ctxt.offset_bytes = 0;
+                reset_offsets(i, last_start_chr_offset);
             }
             MatchSkip(count) => {
-                let next_c_i = char_range_at(s,  i).next;
-                if !it(last_start_i, next_c_i) { return; }
+                let CharRange{ch, next} = char_range_at(s, i);
+                ctxt.chr = ch;
+                if !it(last_start_i, next) { return; }
                 if overlap {
                     for (count+1).times {
                         i = char_range_at(s, last_start_i).next;
@@ -1744,50 +1762,43 @@ pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
                         last_start_chr_offset += 1;
                     }
                 } else {
-                    i = next_c_i;
+                    i = next;
                     last_start_chr_offset = last_start_chr_offset + ctxt.offset_chars + 1;
                     last_start_i = i;
                 }
-                ctxt.base_offset_chars = last_start_chr_offset;
-                ctxt.base_offset_bytes = i;
-                ctxt.offset_chars = 0;
-                ctxt.offset_bytes = 0;
+
+                reset_offsets(i, last_start_chr_offset);
             }
             MatchCont => {
-                let next_c_i = char_range_at(s,  i).next;
-                if !it(last_start_i, next_c_i) { return; }
-                let new_i = next_c_i;
+                let CharRange{ch, next} = char_range_at(s, i);
+                ctxt.chr = ch;
+                if !it(last_start_i, next) { return; }
+                let new_i = next;
                 let byte_diff = (new_i - i);
 
-                ctxt.offset_chars += 1;
-                ctxt.offset_bytes += byte_diff;
-                ctxt.base_offset_chars += 1;
-                ctxt.base_offset_bytes += byte_diff;
-
+                incr_offsets(byte_diff);
                 i = new_i;
             }
             Miss => {
+                ctxt.chr = char_range_at(s, i).ch;
+
                 i = char_range_at(s, last_start_i).next;
                 last_start_i = i;
                 last_start_chr_offset += 1;
 
-                ctxt.base_offset_chars = last_start_chr_offset;
-                ctxt.base_offset_bytes = i;
-                ctxt.offset_chars = 0;
-                ctxt.offset_bytes = 0;
+                reset_offsets(i, last_start_chr_offset);
             }
             MissSkip(count) => {
+                ctxt.chr = char_range_at(s, i).ch;
+
                 for (count+1).times {
                     i = char_range_at(s, last_start_i).next;
                     if i >= s.len() { return; }
                     last_start_i = i;
                     last_start_chr_offset += 1;
 
-                    ctxt.base_offset_chars = last_start_chr_offset;
-                    ctxt.base_offset_bytes = i;
+                    reset_offsets(i, last_start_chr_offset);
                 }
-                ctxt.offset_chars = 0;
-                ctxt.offset_bytes = 0;
             }
         }
     }
@@ -4072,7 +4083,7 @@ mod tests {
 
         let fs = [
             // match occurrences of string "aac" and "aacaad", reusing a previous prefix match
-            (|ctx: &MatchCtxt| {
+            (|ctx: &MatchCtx| {
                 match (ctx.offset_chars, ctx.chr) {
                     (0, 'a') => Match,
                     (1, 'a') => Match,

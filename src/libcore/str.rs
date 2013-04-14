@@ -1638,8 +1638,6 @@ pub enum MatchRes {
 
 pub struct MatchCtx {
     chr: char,
-    last_chr: Option<char>,
-    next_chr: Option<char>,
     offset_bytes: uint,
     offset_chars: uint,
     base_offset_bytes: uint,
@@ -1663,8 +1661,6 @@ pub struct MatchCtx {
  * called with an reference to a struct of type `MatchCtx` containing those fields:
  *
  * - `chr`               - the character at the current position in the current substring.
- * - `last_chr`          - the previous character in the current substring, if any.
- * - `next_chr`          - the next character in the current substring, if any.
  * - `offset_bytes`      - offset of the current character relative to the start of the
  *                         current substring in bytes.
  * - `offset_chars`      - offset of the current character relative to the start of the
@@ -1700,8 +1696,6 @@ pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
     let mut last_start_chr_offset = 0;
     let mut ctxt = MatchCtx {
         chr: '♥',
-        last_chr: None,
-        next_chr: if s.len() > 0 { Some(char_range_at(s, 0).ch) } else { None },
         offset_bytes: 0,
         offset_chars: 0,
         base_offset_bytes: 0,
@@ -1713,7 +1707,6 @@ pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
         ctxt.offset_bytes += byte_diff;
         ctxt.base_offset_chars += 1;
         ctxt.base_offset_bytes += byte_diff;
-        ctxt.last_chr = Some(ctxt.chr);
     };
 
     let reset_offsets = |new_i, new_ci| {
@@ -1721,7 +1714,6 @@ pub fn each_scan_match<'a>(s: &'a str, overlap: bool,
         ctxt.base_offset_bytes = new_i;
         ctxt.offset_chars = 0;
         ctxt.offset_bytes = 0;
-        ctxt.last_chr = None;
     };
 
     while i < s.len() {

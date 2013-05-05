@@ -309,7 +309,7 @@ fn cannot_combine(n: Abi, m: Abi) {
                          (m == a && n == b));
         }
         None => {
-            fail!(~"Invalid match not detected");
+            fail!("Invalid match not detected");
         }
     }
 }
@@ -321,7 +321,7 @@ fn can_combine(n: Abi, m: Abi) {
     set.add(m);
     match set.check_valid() {
         Some((_, _)) => {
-            fail!(~"Valid match declared invalid");
+            fail!("Valid match declared invalid");
         }
         None => {}
     }

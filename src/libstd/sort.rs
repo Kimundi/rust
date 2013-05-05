@@ -580,7 +580,7 @@ impl<T:Copy + Ord> MergeState<T> {
             shift_vec(array, dest, c2, len2);
             array[dest+len2] <-> tmp[c1];
         } else if len1 == 0 {
-            fail!(~"Comparison violates its contract!");
+            fail!("Comparison violates its contract!");
         } else {
             assert!(len2 == 0);
             assert!(len1 > 1);
@@ -702,7 +702,7 @@ impl<T:Copy + Ord> MergeState<T> {
             shift_vec(array, dest+1, c1+1, len1);
             array[dest] <-> tmp[c2];
         } else if len2 == 0 {
-            fail!(~"Comparison violates its contract!");
+            fail!("Comparison violates its contract!");
         } else {
             assert!(len1 == 0);
             assert!(len2 != 0);
@@ -948,7 +948,7 @@ mod test_tim_sort {
         fn lt(&self, other: &CVal) -> bool {
             let mut rng = rand::rng();
             if rng.gen::<float>() > 0.995 {
-                fail!(~"It's happening!!!");
+                fail!("It's happening!!!");
             }
             (*self).val < other.val
         }
@@ -1003,7 +1003,7 @@ mod test_tim_sort {
         };
 
         tim_sort(arr);
-        fail!(~"Guarantee the fail");
+        fail!("Guarantee the fail");
     }
 
     struct DVal { val: uint }
@@ -1064,7 +1064,7 @@ mod big_tests {
         fn isSorted<T:Ord>(arr: &[T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    fail!(~"Array not sorted");
+                    fail!("Array not sorted");
                 }
             }
         }
@@ -1135,7 +1135,7 @@ mod big_tests {
         fn isSorted<T:Ord>(arr: &[@T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    fail!(~"Array not sorted");
+                    fail!("Array not sorted");
                 }
             }
         }
@@ -1218,7 +1218,7 @@ mod big_tests {
                         task::local_data::local_data_set(self.key, @(y+1));
                     }
                 }
-                _ => fail!(~"Expected key to work"),
+                _ => fail!("Expected key to work"),
             }
         }
     }

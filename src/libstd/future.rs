@@ -72,7 +72,7 @@ pub impl<A> Future<A> {
             {
                 match self.state {
                     Forced(ref mut v) => { return cast::transmute(v); }
-                    Evaluating => fail!(~"Recursive forcing of future!"),
+                    Evaluating => fail!("Recursive forcing of future!"),
                     Pending(_) => {}
                 }
             }
@@ -80,7 +80,7 @@ pub impl<A> Future<A> {
                 let mut state = Evaluating;
                 self.state <-> state;
                 match state {
-                    Forced(_) | Evaluating => fail!(~"Logic error."),
+                    Forced(_) | Evaluating => fail!("Logic error."),
                     Pending(f) => {
                         self.state = Forced(f());
                         cast::transmute(self.get_ref())
@@ -103,7 +103,7 @@ pub impl<A> Future<A> {
             {
                 match self.state {
                     Forced(ref mut v) => { return cast::transmute(v); }
-                    Evaluating => fail!(~"Recursive forcing of future!"),
+                    Evaluating => fail!("Recursive forcing of future!"),
                     Pending(_) => {}
                 }
             }
@@ -111,7 +111,7 @@ pub impl<A> Future<A> {
                 let mut state = Evaluating;
                 self.state <-> state;
                 match state {
-                    Forced(_) | Evaluating => fail!(~"Logic error."),
+                    Forced(_) | Evaluating => fail!("Logic error."),
                     Pending(f) => {
                         self.state = Forced(f());
                         cast::transmute(self.get_ref())

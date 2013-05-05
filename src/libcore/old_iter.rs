@@ -218,7 +218,7 @@ pub fn min<A:Copy + Ord,IA:BaseIter<A>>(self: &IA) -> A {
         }
     } {
         Some(val) => val,
-        None => fail!(~"min called on empty iterator")
+        None => fail!("min called on empty iterator")
     }
 }
 
@@ -233,7 +233,7 @@ pub fn max<A:Copy + Ord,IA:BaseIter<A>>(self: &IA) -> A {
         }
     } {
         Some(val) => val,
-        None => fail!(~"max called on empty iterator")
+        None => fail!("max called on empty iterator")
     }
 }
 

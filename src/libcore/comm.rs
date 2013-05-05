@@ -214,7 +214,7 @@ impl<T: Owned> Peekable<T> for Port<T> {
             endp <-> *self_endp;
             let peek = match endp {
                 Some(ref mut endp) => peek(endp),
-                None => fail!(~"peeking empty stream")
+                None => fail!("peeking empty stream")
             };
             *self_endp <-> endp;
             peek
@@ -227,7 +227,7 @@ impl<T: Owned> Selectable for Port<T> {
         unsafe {
             match self.endp {
                 Some(ref mut endp) => endp.header(),
-                None => fail!(~"peeking empty stream")
+                None => fail!("peeking empty stream")
             }
         }
     }
@@ -531,7 +531,7 @@ pub fn select2i<A:Selectable, B:Selectable>(a: &mut A, b: &mut B)
     match wait_many(endpoints) {
         0 => Left(()),
         1 => Right(()),
-        _ => fail!(~"wait returned unexpected index"),
+        _ => fail!("wait returned unexpected index"),
     }
 }
 

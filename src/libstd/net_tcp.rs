@@ -1653,7 +1653,7 @@ mod test {
             hl_loop);
         match actual_resp_result.get_err() {
           ConnectionRefused => (),
-          _ => fail!(~"unknown error.. expected connection_refused")
+          _ => fail!("unknown error.. expected connection_refused")
         }
     }
     pub fn impl_gl_tcp_ipv4_server_address_in_use() {
@@ -1694,8 +1694,8 @@ mod test {
             assert!(true);
           }
           _ => {
-            fail!(~"expected address_in_use listen error,"+
-                ~"but got a different error varient. check logs.");
+            fail!("expected address_in_use listen error,\
+                   but got a different error varient. check logs.");
           }
         }
     }
@@ -1713,8 +1713,8 @@ mod test {
             assert!(true);
           }
           _ => {
-            fail!(~"expected address_in_use listen error,"+
-                      ~"but got a different error varient. check logs.");
+            fail!("expected address_in_use listen error,\
+                   but got a different error varient. check logs.");
           }
         }
     }
@@ -1893,14 +1893,13 @@ mod test {
         if result::is_err(&listen_result) {
             match result::get_err(&listen_result) {
               GenericListenErr(ref name, ref msg) => {
-                fail!(fmt!("SERVER: exited abnormally name %s msg %s",
-                                *name, *msg));
+                fail!("SERVER: exited abnormally name %s msg %s", *name, *msg);
               }
               AccessDenied => {
-                fail!(~"SERVER: exited abnormally, got access denied..");
+                fail!("SERVER: exited abnormally, got access denied..");
               }
               AddressInUse => {
-                fail!(~"SERVER: exited abnormally, got address in use...");
+                fail!("SERVER: exited abnormally, got address in use...");
               }
             }
         }
@@ -1919,15 +1918,14 @@ mod test {
                 debug!("establish_cb %?", kill_ch);
             },
             |new_conn, kill_ch| {
-                fail!(fmt!("SERVER: shouldn't be called.. %? %?",
-                           new_conn, kill_ch));
+                fail!("SERVER: shouldn't be called.. %? %?", new_conn, kill_ch);
         });
         // err check on listen_result
         if result::is_err(&listen_result) {
             result::get_err(&listen_result)
         }
         else {
-            fail!(~"SERVER: did not fail as expected")
+            fail!("SERVER: did not fail as expected")
         }
     }
 
@@ -1971,7 +1969,7 @@ mod test {
             debug!("tcp_write_single err name: %s msg: %s",
                 err_data.err_name, err_data.err_msg);
             // meh. torn on what to do here.
-            fail!(~"tcp_write_single failed");
+            fail!("tcp_write_single failed");
         }
     }
 }

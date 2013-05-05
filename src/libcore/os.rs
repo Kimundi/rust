@@ -179,8 +179,8 @@ pub fn env() -> ~[(~str,~str)] {
             };
             let ch = GetEnvironmentStringsA();
             if (ch as uint == 0) {
-                fail!(fmt!("os::env() failure getting env string from OS: %s",
-                           os::last_os_error()));
+                fail!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error());
             }
             let mut curr_ptr: uint = ch as uint;
             let mut result = ~[];
@@ -202,8 +202,8 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let environ = rustrt::rust_env_pairs();
             if (environ as uint == 0) {
-                fail!(fmt!("os::env() failure getting env string from OS: %s",
-                           os::last_os_error()));
+                fail!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error());
             }
             let mut result = ~[];
             ptr::array_each(environ, |e| {
@@ -741,8 +741,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                         let fp_buf = rustrt::rust_list_dir_wfd_fp_buf(
                             wfd_ptr);
                         if fp_buf as uint == 0 {
-                            fail!(~"os::list_dir() failure:"+
-                                  ~" got null ptr from wfd");
+                            fail!("os::list_dir() failure: got null ptr from wfd");
                         }
                         else {
                             let fp_vec = vec::from_buf(
@@ -1059,7 +1058,7 @@ pub fn last_os_error() -> ~str {
             let err = strerror_r(errno() as c_int, &mut buf[0],
                                  TMPBUF_SZ as size_t);
             if err < 0 {
-                fail!(~"strerror_r failure");
+                fail!("strerror_r failure");
             }
 
             str::raw::from_c_str(&buf[0])
@@ -1097,7 +1096,7 @@ pub fn last_os_error() -> ~str {
                                      &mut buf[0], TMPBUF_SZ as DWORD,
                                      ptr::null());
             if res == 0 {
-                fail!(fmt!("[%?] FormatMessage failure", errno()));
+                fail!("[%?] FormatMessage failure", errno());
             }
 
             str::raw::from_c_str(&buf[0])
@@ -1301,7 +1300,7 @@ pub fn glob(pattern: &str) -> ~[Path] {
 /// Returns a vector of Path objects that match the given glob pattern
 #[cfg(target_os = "win32")]
 pub fn glob(pattern: &str) -> ~[Path] {
-    fail!(~"glob() is unimplemented on Windows")
+    fail!("glob() is unimplemented on Windows")
 }
 
 #[cfg(target_os = "macos")]
@@ -1635,7 +1634,7 @@ mod tests {
           let in_mode = in.get_mode();
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
-            fail!(fmt!("%s doesn't exist", in.to_str()));
+            fail!("%s doesn't exist", in.to_str());
           }
           assert!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);

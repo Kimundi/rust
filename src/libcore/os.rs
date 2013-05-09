@@ -179,8 +179,7 @@ pub fn env() -> ~[(~str,~str)] {
             };
             let ch = GetEnvironmentStringsA();
             if (ch as uint == 0) {
-                fail!("os::env() failure getting env string from OS: %s",
-                           os::last_os_error());
+                fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
             }
             let mut curr_ptr: uint = ch as uint;
             let mut result = ~[];
@@ -202,8 +201,7 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let environ = rustrt::rust_env_pairs();
             if (environ as uint == 0) {
-                fail!("os::env() failure getting env string from OS: %s",
-                           os::last_os_error());
+                fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
             }
             let mut result = ~[];
             ptr::array_each(environ, |e| {

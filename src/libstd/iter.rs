@@ -65,7 +65,7 @@ pub trait FromIter<T> {
     pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> Self;
 }
 
-// NOTE: This should be in vec but can't because of coherence
+// Note: This impl should be in vec but can't be because of coherence (~[T] not defined in vec)
 impl<T> FromIter<T> for ~[T]{
     #[inline(always)]
     pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_from_iter() {
-        let xs: = ~[1, 2, 3];
+        let xs = ~[1, 2, 3];
         let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }

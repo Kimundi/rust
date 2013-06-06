@@ -111,7 +111,7 @@ pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
 
     let port = Cell::new(port);
     do from_fn {
-        recv_one(port.take())
+        recv_one(port.take_out())
     }
 }
 
@@ -139,7 +139,7 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 
     let chan = Cell::new(chan);
     do task::spawn {
-        let chan = chan.take();
+        let chan = chan.take_out();
         send_one(chan, blk());
     }
 
@@ -206,7 +206,7 @@ mod test {
         let expected = "schlorf";
         let f = Cell::new(do spawn { expected });
         do task::spawn {
-            let mut f = f.take();
+            let mut f = f.take_out();
             let actual = f.get();
             assert_eq!(actual, expected);
         }

@@ -110,7 +110,7 @@ mod test_rc {
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 20);
+        assert_eq!(y.borrow().take_out(), 20);
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod test_rc {
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 5);
+        assert_eq!(y.borrow().take_out(), 5);
     }
 
     #[test]

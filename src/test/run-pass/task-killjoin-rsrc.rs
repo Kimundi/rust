@@ -57,7 +57,7 @@ fn joinable(f: ~fn()) -> Port<bool> {
     let (p, c) = stream();
     let c = Cell::new(c);
     do task::spawn_unlinked {
-        let ccc = c.take();
+        let ccc = c.take_out();
         wrapper(ccc, f)
     }
     p

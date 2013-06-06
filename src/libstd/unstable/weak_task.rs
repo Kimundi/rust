@@ -45,7 +45,7 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     assert!(service.try_send(RegisterWeakTask(task, shutdown_chan)));
     rust_dec_kernel_live_count();
     do (|| {
-        f(shutdown_port.take())
+        f(shutdown_port.take_out())
     }).finally || {
         rust_inc_kernel_live_count();
         // Service my have already exited
@@ -76,9 +76,9 @@ fn create_global_service() -> ~WeakTaskService {
     task.unlinked();
     do task.spawn {
         debug!("running global weak task service");
-        let port = Cell::new(port.take());
+        let port = Cell::new(port.take_out());
         do (|| {
-            let port = port.take();
+            let port = port.take_out();
             // The weak task service is itself a weak task
             debug!("weakening the weak service task");
             unsafe { rust_dec_kernel_live_count(); }
@@ -197,7 +197,7 @@ fn test_select_stream_and_oneshot() {
     do spawn {
         unsafe {
             do weaken_task |mut signal| {
-                let mut port = port.take();
+                let mut port = port.take_out();
                 match select2i(&mut port, &mut signal) {
                     Left(*) => (),
                     Right(*) => fail!()

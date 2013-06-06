@@ -108,7 +108,7 @@ mod test {
             let tube_clone_cell = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
-                let mut tube_clone = tube_clone_cell.take();
+                let mut tube_clone = tube_clone_cell.take_out();
                 tube_clone.send(1);
                 let sched = Local::take::<Scheduler>();
                 sched.resume_task_immediately(task);
@@ -126,11 +126,11 @@ mod test {
             let tube_clone = Cell::new(Cell::new(Cell::new(tube_clone)));
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
-                let tube_clone = tube_clone.take();
+                let tube_clone = tube_clone.take_out();
                 do Local::borrow::<Scheduler> |sched| {
-                    let tube_clone = tube_clone.take();
+                    let tube_clone = tube_clone.take_out();
                     do sched.event_loop.callback {
-                        let mut tube_clone = tube_clone.take();
+                        let mut tube_clone = tube_clone.take_out();
                         // The task should be blocked on this now and
                         // sending will wake it up.
                         tube_clone.send(1);
@@ -154,16 +154,16 @@ mod test {
             let tube_clone = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
-                callback_send(tube_clone.take(), 0);
+                callback_send(tube_clone.take_out(), 0);
 
                 fn callback_send(tube: Tube<int>, i: int) {
                     if i == 100 { return; }
 
                     let tube = Cell::new(Cell::new(tube));
                     do Local::borrow::<Scheduler> |sched| {
-                        let tube = tube.take();
+                        let tube = tube.take_out();
                         do sched.event_loop.callback {
-                            let mut tube = tube.take();
+                            let mut tube = tube.take_out();
                             // The task should be blocked on this now and
                             // sending will wake it up.
                             tube.send(i);

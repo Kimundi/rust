@@ -1842,7 +1842,7 @@ mod test {
             // risky to run this on the loop, but some users
             // will want the POWER
             |new_conn, kill_ch| {
-                let resp_cell2 = Cell::new(resp_cell.take());
+                let resp_cell2 = Cell::new(resp_cell.take_out());
                 debug!("SERVER: new connection!");
                 let (cont_po, cont_ch) = stream();
                 let server_ch = server_ch.clone();
@@ -1877,7 +1877,7 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             debug!("SERVER: before write");
-                            tcp_write_single(&sock, str::to_bytes(resp_cell2.take()));
+                            tcp_write_single(&sock, str::to_bytes(resp_cell2.take_out()));
                             debug!("SERVER: after write.. die");
                             kill_ch.send(None);
                           }

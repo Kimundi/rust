@@ -44,7 +44,7 @@ pub fn spawn_service<T:Owned,Tb:Owned>(
     // into a new task.
     let server = Cell::new(server);
     do task::spawn {
-        service(server.take());
+        service(server.take_out());
     }
 
     client

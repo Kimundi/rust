@@ -34,7 +34,7 @@ pub fn main() {
     let (port, chan) = oneshot::init();
     let port = Cell::new(port);
     do spawn {
-        match try_recv(port.take()) {
+        match try_recv(port.take_out()) {
           Some(*) => { fail!() }
           None => { }
         }

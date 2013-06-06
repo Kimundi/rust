@@ -29,7 +29,7 @@ fn child_generation(gens_left: uint, c: comm::Chan<()>) {
     // alive at a time,
     let c = Cell::new(c);
     do task::spawn_supervised {
-        let c = c.take();
+        let c = c.take_out();
         if gens_left & 1 == 1 {
             task::yield(); // shake things up a bit
         }

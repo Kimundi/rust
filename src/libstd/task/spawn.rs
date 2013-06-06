@@ -598,7 +598,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let (child_tg, ancestors, f) = child_data.take();
+            let (child_tg, ancestors, f) = child_data.take_out();
             // Create child task.
             let new_task = match opts.sched.mode {
                 DefaultScheduler => rt::new_task(),
@@ -639,7 +639,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         let child_data = Cell::new((child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (child_arc, ancestors) = child_data.take();
+            let mut (child_arc, ancestors) = child_data.take_out();
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must

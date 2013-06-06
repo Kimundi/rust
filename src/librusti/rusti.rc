@@ -368,7 +368,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
     let line = Cell::new(line);
     let r = Cell::new(copy *repl);
     let result = do task::try {
-        run(r.take(), line.take())
+        run(r.take_out(), line.take_out())
     };
 
     if result.is_ok() {

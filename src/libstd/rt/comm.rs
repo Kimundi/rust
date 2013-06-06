@@ -323,7 +323,7 @@ impl<T: Owned> GenericChan<T> for Chan<T> {
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
     fn try_send(&self, val: T) -> bool {
         let (next_pone, next_cone) = oneshot();
-        let cone = self.next.take();
+        let cone = self.next.take_out();
         self.next.put_back(next_cone);
         cone.try_send(StreamPayload { val: val, next: next_pone })
     }
@@ -340,7 +340,7 @@ impl<T> GenericPort<T> for Port<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        let pone = self.next.take();
+        let pone = self.next.take_out();
         match pone.try_recv() {
             Some(StreamPayload { val, next }) => {
                 self.next.put_back(next);
@@ -485,7 +485,7 @@ mod test {
             let (port, chan) = oneshot::<~int>();
             let port_cell = Cell::new(port);
             do spawntask_immediately {
-                assert!(port_cell.take().recv() == ~10);
+                assert!(port_cell.take_out().recv() == ~10);
             }
 
             chan.send(~10);
@@ -499,10 +499,10 @@ mod test {
             let port_cell = Cell::new(port);
             let chan_cell = Cell::new(chan);
             do spawntask_later {
-                let _cell = chan_cell.take();
+                let _cell = chan_cell.take_out();
             }
             let res = do spawntask_try {
-                assert!(port_cell.take().recv() == ~10);
+                assert!(port_cell.take_out().recv() == ~10);
             };
             assert!(res.is_err());
         }
@@ -515,7 +515,7 @@ mod test {
                 let (port, chan) = oneshot::<int>();
                 let port_cell = Cell::new(port);
                 let _thread = do spawntask_thread {
-                    let _p = port_cell.take();
+                    let _p = port_cell.take_out();
                 };
                 let _chan = chan;
             }
@@ -530,10 +530,10 @@ mod test {
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
-                    let _p = port_cell.take();
+                    let _p = port_cell.take_out();
                 };
                 let _thread2 = do spawntask_thread {
-                    let c = chan_cell.take();
+                    let c = chan_cell.take_out();
                     c.send(1);
                 };
             }
@@ -548,16 +548,16 @@ mod test {
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
-                    let port_cell = Cell::new(port_cell.take());
+                    let port_cell = Cell::new(port_cell.take_out());
                     let res = do spawntask_try {
-                        port_cell.take().recv();
+                        port_cell.take_out().recv();
                     };
                     assert!(res.is_err());
                 };
                 let _thread2 = do spawntask_thread {
-                    let chan_cell = Cell::new(chan_cell.take());
+                    let chan_cell = Cell::new(chan_cell.take_out());
                     do spawntask {
-                        chan_cell.take();
+                        chan_cell.take_out();
                     }
                 };
             }
@@ -572,10 +572,10 @@ mod test {
                 let chan_cell = Cell::new(chan);
                 let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
-                    chan_cell.take().send(~10);
+                    chan_cell.take_out().send(~10);
                 };
                 let _thread2 = do spawntask_thread {
-                    assert!(port_cell.take().recv() == ~10);
+                    assert!(port_cell.take_out().recv() == ~10);
                 };
             }
         }
@@ -595,7 +595,7 @@ mod test {
 
                     let chan_cell = Cell::new(chan);
                     let _thread = do spawntask_thread {
-                        let chan = chan_cell.take();
+                        let chan = chan_cell.take_out();
                         chan.send(~i);
                         send(chan, i + 1);
                     };
@@ -606,7 +606,7 @@ mod test {
 
                     let port_cell = Cell::new(port);
                     let _thread = do spawntask_thread {
-                        let port = port_cell.take();
+                        let port = port_cell.take_out();
                         assert!(port.recv() == ~i);
                         recv(port, i + 1);
                     };

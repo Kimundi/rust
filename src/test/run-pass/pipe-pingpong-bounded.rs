@@ -116,11 +116,11 @@ pub fn main() {
     let client_ = Cell::new(client_);
     let server_ = Cell::new(server_);
     do task::spawn {
-        let client__ = client_.take();
+        let client__ = client_.take_out();
         test::client(client__);
     };
     do task::spawn {
-        let server__ = server_.take();
+        let server__ = server_.take_out();
         test::server(server__);
     };
 }

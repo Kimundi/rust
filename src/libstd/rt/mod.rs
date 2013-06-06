@@ -202,7 +202,7 @@ pub fn context() -> RuntimeContext {
                     context.put_back(SchedulerContext);
                 }
             }
-            return context.take();
+            return context.take_out();
         } else {
             return GlobalContext;
         }
@@ -233,7 +233,7 @@ fn test_context() {
                 assert_eq!(context(), SchedulerContext);
                 let task = Cell::new(task);
                 do Local::borrow::<Scheduler> |sched| {
-                    sched.enqueue_task(task.take());
+                    sched.enqueue_task(task.take_out());
                 }
             }
         };

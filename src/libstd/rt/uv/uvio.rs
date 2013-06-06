@@ -143,22 +143,22 @@ impl IoFactory for UvIoFactory {
 
                     // Context switch
                     let scheduler = Local::take::<Scheduler>();
-                    scheduler.resume_task_immediately(task_cell.take());
+                    scheduler.resume_task_immediately(task_cell.take_out());
                 } else {
                     rtdebug!("status is some");
-                    let task_cell = Cell::new(task_cell.take());
+                    let task_cell = Cell::new(task_cell.take_out());
                     do stream_watcher.close {
                         let res = Err(uv_error_to_io_error(status.get()));
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_task_immediately(task_cell.take_out());
                     }
                 };
             }
         }
 
         assert!(!result_cell.is_empty());
-        return result_cell.take();
+        return result_cell.take_out();
     }
 
     fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError> {
@@ -171,7 +171,7 @@ impl IoFactory for UvIoFactory {
                     let task_cell = Cell::new(task);
                     do watcher.as_stream().close {
                         let scheduler = Local::take::<Scheduler>();
-                        scheduler.resume_task_immediately(task_cell.take());
+                        scheduler.resume_task_immediately(task_cell.take_out());
                     }
                 }
                 Err(uv_error_to_io_error(uverr))
@@ -207,7 +207,7 @@ impl Drop for UvTcpListener {
             let task_cell = Cell::new(task);
             do watcher.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_task_immediately(task_cell.take_out());
             }
         }
     }
@@ -227,7 +227,7 @@ impl RtioTcpListener for UvTcpListener {
         let server_tcp_watcher = self.watcher();
         let incoming_streams_cell = Cell::new(self.incoming_streams.clone());
 
-        let incoming_streams_cell = Cell::new(incoming_streams_cell.take());
+        let incoming_streams_cell = Cell::new(incoming_streams_cell.take_out());
         let mut server_tcp_watcher = server_tcp_watcher;
         do server_tcp_watcher.listen |server_stream_watcher, status| {
             let maybe_stream = if status.is_none() {
@@ -242,7 +242,7 @@ impl RtioTcpListener for UvTcpListener {
                 Err(standard_error(OtherIoError))
             };
 
-            let mut incoming_streams = incoming_streams_cell.take();
+            let mut incoming_streams = incoming_streams_cell.take_out();
             incoming_streams.send(maybe_stream);
             incoming_streams_cell.put_back(incoming_streams);
         }
@@ -269,7 +269,7 @@ impl Drop for UvTcpStream {
             let task_cell = Cell::new(task);
             do watcher.close {
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_task_immediately(task_cell.take_out());
             }
         }
     }
@@ -315,12 +315,12 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_task_immediately(task_cell.take_out());
             }
         }
 
         assert!(!result_cell.is_empty());
-        return result_cell.take();
+        return result_cell.take_out();
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
@@ -344,12 +344,12 @@ impl RtioTcpStream for UvTcpStream {
                 unsafe { (*result_cell_ptr).put_back(result); }
 
                 let scheduler = Local::take::<Scheduler>();
-                scheduler.resume_task_immediately(task_cell.take());
+                scheduler.resume_task_immediately(task_cell.take_out());
             }
         }
 
         assert!(!result_cell.is_empty());
-        return result_cell.take();
+        return result_cell.take_out();
     }
 }
 
@@ -427,7 +427,7 @@ fn test_read_and_block() {
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task = Cell::new(task);
                     do Local::borrow::<Scheduler> |scheduler| {
-                        scheduler.enqueue_task(task.take());
+                        scheduler.enqueue_task(task.take_out());
                     }
                 }
             }

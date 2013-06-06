@@ -68,7 +68,7 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
     let source = Cell::new(source);
     let parse = Cell::new(parse);
     do task::spawn {
-        act(&po, source.take(), parse.take());
+        act(&po, source.take_out(), parse.take_out());
     }
 
     let srv_ = Srv {

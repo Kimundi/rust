@@ -41,7 +41,7 @@ impl<T> Cell<T> {
     }
 
     /// Yields the value, failing if the cell is empty.
-    pub fn take(&self) -> T {
+    pub fn take_out(&self) -> T {
         let this = unsafe { transmute_mut(self) };
         if this.is_empty() {
             fail!("attempt to take an empty cell");
@@ -66,7 +66,7 @@ impl<T> Cell<T> {
 
     /// Calls a closure with a reference to the value.
     pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
-        let v = self.take();
+        let v = self.take_out();
         let r = op(&v);
         self.put_back(v);
         r
@@ -74,7 +74,7 @@ impl<T> Cell<T> {
 
     /// Calls a closure with a mutable reference to the value.
     pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
-        let mut v = self.take();
+        let mut v = self.take_out();
         let r = op(&mut v);
         self.put_back(v);
         r
@@ -85,7 +85,7 @@ impl<T> Cell<T> {
 fn test_basic() {
     let value_cell = Cell::new(~10);
     assert!(!value_cell.is_empty());
-    let value = value_cell.take();
+    let value = value_cell.take_out();
     assert!(value == ~10);
     assert!(value_cell.is_empty());
     value_cell.put_back(value);
@@ -97,7 +97,7 @@ fn test_basic() {
 #[ignore(cfg(windows))]
 fn test_take_empty() {
     let value_cell = Cell::new_empty::<~int>();
-    value_cell.take();
+    value_cell.take_out();
 }
 
 #[test]
@@ -122,6 +122,6 @@ fn test_with_mut_ref() {
     let v = ~[1, 2];
     let c = Cell::new(v);
     do c.with_mut_ref() |v| { v.push(3); }
-    let v = c.take();
+    let v = c.take_out();
     assert_eq!(v, good);
 }

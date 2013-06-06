@@ -25,6 +25,6 @@ fn test05() {
     };
     let fn_to_send = Cell::new(fn_to_send);
     task::spawn(|| {
-        test05_start(fn_to_send.take());
+        test05_start(fn_to_send.take_out());
     });
 }

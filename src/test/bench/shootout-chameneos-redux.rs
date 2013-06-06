@@ -162,7 +162,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let (from_rendezvous, to_creature) = stream();
             let from_rendezvous = Cell::new(from_rendezvous);
             do task::spawn || {
-                creature(ii, col, from_rendezvous.take(), to_rendezvous.clone(),
+                creature(ii, col, from_rendezvous.take_out(), to_rendezvous.clone(),
                          to_rendezvous_log.clone());
             }
             to_creature

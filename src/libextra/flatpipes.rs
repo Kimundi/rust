@@ -798,8 +798,8 @@ mod test {
         let addr = copy addr0;
         do task::spawn || {
             let iotask = &uv::global_loop::get();
-            let begin_connect_chan = begin_connect_chan.take();
-            let accept_chan = accept_chan.take();
+            let begin_connect_chan = begin_connect_chan.take_out();
+            let accept_chan = accept_chan.take_out();
             let listen_res = do tcp::listen(
                 copy addr, port, 128, iotask, |_kill_ch| {
                     // Tell the sender to initiate the connection

@@ -385,7 +385,7 @@ mod test {
 
                     rtdebug!("i'm reading!");
                     let buf = vec_from_uv_buf(buf);
-                    let mut count = count_cell.take();
+                    let mut count = count_cell.take_out();
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
@@ -418,8 +418,8 @@ mod test {
                     do stream_watcher.write(buf) |stream_watcher, status| {
                         rtdebug!("writing");
                         assert!(status.is_none());
-                        let msg_cell = Cell::new(msg_cell.take());
-                        stream_watcher.close(||ignore(msg_cell.take()));
+                        let msg_cell = Cell::new(msg_cell.take_out());
+                        stream_watcher.close(||ignore(msg_cell.take_out()));
                     }
                 }
                 loop_.run();

@@ -286,7 +286,7 @@ mod test {
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {
-                delayed_send(&hl_loop_clone, 50u, &test_ch, expected.take());
+                delayed_send(&hl_loop_clone, 50u, &test_ch, expected.take_out());
             };
 
             match recv_timeout(&hl_loop, 1u, &test_po) {

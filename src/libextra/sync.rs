@@ -820,7 +820,7 @@ mod tests {
             let (p,c) = comm::stream();
             let child_data = Cell::new((s2, c));
             do s.access {
-                let (s2, c) = child_data.take();
+                let (s2, c) = child_data.take_out();
                 do task::spawn || {
                     c.send(());
                     do s2.access { }
@@ -1005,7 +1005,7 @@ mod tests {
                 // spawn sibling task
                 do task::spawn { // linked
                     do mi.lock_cond |cond| {
-                        let c = c.take();
+                        let c = c.take_out();
                         c.send(()); // tell sibling to go ahead
                         let _z = SendOnFailure(c);
                         cond.wait(); // block forever

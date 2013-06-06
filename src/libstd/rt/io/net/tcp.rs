@@ -291,7 +291,7 @@ mod test {
                     rtdebug!("accepted");
                     // Start another task to handle the connection
                     do spawntask_immediately {
-                        let mut stream = stream.take();
+                        let mut stream = stream.take_out();
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == i as u8);
@@ -330,7 +330,7 @@ mod test {
                     rtdebug!("accepted");
                     // Start another task to handle the connection
                     do spawntask_later {
-                        let mut stream = stream.take();
+                        let mut stream = stream.take_out();
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == 99);

@@ -31,7 +31,7 @@ impl<T: Owned> WorkQueue<T> {
     pub fn push(&mut self, value: T) {
         unsafe {
             let value = Cell::new(value);
-            self.queue.with(|q| q.unshift(value.take()) );
+            self.queue.with(|q| q.unshift(value.take_out()) );
         }
     }
 

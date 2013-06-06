@@ -182,7 +182,7 @@ fn config_from_opts(
     let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
-            &config, pandoc_cmd, process_output.take());
+            &config, pandoc_cmd, process_output.take_out());
         do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,

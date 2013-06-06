@@ -354,7 +354,7 @@ impl TPrep for Prep {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
                     };
-                    let chan = chan.take();
+                    let chan = chan.take_out();
                     let v = blk(&exe);
                     send_one(chan, (exe, v));
                 }

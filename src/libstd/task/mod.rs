@@ -311,7 +311,7 @@ impl TaskBuilder {
         let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
             let f: ~fn(~fn()) -> ~fn() = |body| {
-                let prev_gen_body = prev_gen_body.take();
+                let prev_gen_body = prev_gen_body.take_out();
                 wrapper(prev_gen_body(body))
             };
             f
@@ -356,7 +356,7 @@ impl TaskBuilder {
     pub fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
         let arg = Cell::new(arg);
         do self.spawn {
-            f(arg.take());
+            f(arg.take_out());
         }
     }
 
@@ -793,9 +793,9 @@ fn test_add_wrapper() {
     let mut b0 = task();
     let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
-        let ch = Cell::new(ch.take());
+        let ch = Cell::new(ch.take_out());
         let result: ~fn() = || {
-            let ch = ch.take();
+            let ch = ch.take_out();
             body();
             ch.send(());
         };
@@ -893,9 +893,9 @@ fn test_spawn_sched_childs_on_default_sched() {
     let ch = Cell::new(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = unsafe { rt::rust_get_sched_id() };
-        let ch = Cell::new(ch.take());
+        let ch = Cell::new(ch.take_out());
         do spawn {
-            let ch = ch.take();
+            let ch = ch.take_out();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);

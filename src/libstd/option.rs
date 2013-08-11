@@ -46,7 +46,7 @@ use cmp::{Eq,Ord};
 use ops::Add;
 use util;
 use num::Zero;
-use iterator::Iterator;
+use iterator::{Iterator, DoubleEndedIterator};
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -361,6 +361,15 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns self or a `Some`-wrapped default value
+    #[inline]
+    pub fn or_some(self, def: T) -> Option<T> {
+        match self {
+            None => Some(def),
+            val => val
+        }
+    }
+
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
@@ -381,7 +390,7 @@ impl<T:Zero> Option<T> {
         }
     }
 
-    /// Returns self or `Some(zero)` (for this type)
+    /// Returns self or `Some`-wrapped zero value
     #[inline]
     pub fn or_zero(self) -> Option<T> {
         match self {
@@ -413,6 +422,13 @@ impl<A> Iterator<A> for OptionIterator<A> {
             Some(_) => (1, Some(1)),
             None => (0, Some(0)),
         }
+    }
+}
+
+impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        self.opt.take()
     }
 }
 

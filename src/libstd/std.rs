@@ -110,7 +110,7 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod nil;
+pub mod unit;
 pub mod bool;
 pub mod char;
 pub mod tuple;
@@ -138,7 +138,6 @@ pub mod borrow;
 /* Common traits */
 
 pub mod from_str;
-#[path = "num/num.rs"]
 pub mod num;
 pub mod iter;
 pub mod iterator;

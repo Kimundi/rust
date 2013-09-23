@@ -10,6 +10,7 @@
 
 //! Operations and constants for `u8`
 
+use char::ToChar;
 use num::{CheckedAdd, CheckedSub, CheckedMul};
 use option::{Option, Some, None};
 use unstable::intrinsics;
@@ -46,4 +47,9 @@ impl CheckedMul for u8 {
             if y { None } else { Some(x) }
         }
     }
+}
+
+impl ToChar for u8 {
+    #[inline]
+    fn to_char(&self) -> char { *self as char }
 }

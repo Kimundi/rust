@@ -10,18 +10,20 @@
 
 //! Windows file path handling
 
+use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
+
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use cast;
+use char::ToChar;
 use cmp::Eq;
 use from_str::FromStr;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
 use option::{Option, Some, None};
-use str;
 use str::{CharSplitIterator, OwnedStr, Str, StrVector};
+use str;
 use to_bytes::IterBytes;
 use vec::Vector;
-use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &str
 ///

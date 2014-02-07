@@ -752,11 +752,6 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     fn is_subset(&self, other: &HashSet<T>) -> bool {
         self.iter().all(|v| other.contains(v))
     }
-
-    /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &HashSet<T>) -> bool {
-        other.is_subset(self)
-    }
 }
 
 impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {

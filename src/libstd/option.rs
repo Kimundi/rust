@@ -41,6 +41,7 @@ use any::Any;
 use clone::Clone;
 use clone::DeepClone;
 use cmp::{Eq, TotalEq, TotalOrd};
+use container::{Container, Mutable, Set, MutableSet};
 use default::Default;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
@@ -395,6 +396,67 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
+impl<T> Container for Option<T> {
+    #[inline]
+    fn len(&self) -> uint { if self.is_some() { 1 } else { 0 } }
+}
+
+impl<T> Mutable for Option<T> {
+    #[inline]
+    fn clear(&mut self) { *self = None; }
+}
+
+impl<T: Eq> Set<T> for Option<T> {
+    #[inline]
+    fn contains(&self, value: &T) -> bool {
+        match *self {
+            Some(ref t) => t.eq(value),
+            None => false
+        }
+    }
+
+    #[inline]
+    fn is_disjoint(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&Some(ref s), &Some(ref o)) => !s.eq(o),
+            _ => true
+        }
+    }
+
+    #[inline]
+    fn is_subset(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&Some(ref s), &Some(ref o)) => s.eq(o),
+            (&Some(_), &None) => false,
+            _ => true
+        }
+    }
+}
+
+impl<T: Eq> MutableSet<T> for Option<T> {
+    #[inline]
+    fn insert(&mut self, value: T) -> bool {
+        match *self {
+            Some(ref s) if s.eq(&value) => false,
+            Some(_) => fail!("An `Option` can not contain more than one value!"),
+            None => {
+                *self = Some(value);
+                true
+            }
+        }
+    }
+
+    #[inline]
+    fn remove(&mut self, value: &T) -> bool {
+        if self.contains(value) {
+            *self = None;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterator
 /////////////////////////////////////////////////////////////////////////////
@@ -744,5 +806,112 @@ mod tests {
         let v: Option<~[()]> = collect(functions.iter().map(|f| (*f)()));
 
         assert_eq!(v, None);
+    }
+
+    #[test]
+    fn test_container() {
+        let s1 = Some(true);
+        let s2 = Some(false);
+        let n1 = None::<bool>;
+
+        assert_eq!(s1.len(), 1);
+        assert_eq!(s2.len(), 1);
+        assert_eq!(n1.len(), 0);
+    }
+
+    #[test]
+    fn test_mutable() {
+        let mut s1 = Some(true);
+        let mut s2 = Some(false);
+        let mut n1 = None::<bool>;
+
+        s1.clear();
+        assert_eq!(s1, None);
+
+        s2.clear();
+        assert_eq!(s2, None);
+
+        n1.clear();
+        assert_eq!(n1, None);
+    }
+
+    #[test]
+    fn test_set_contains() {
+        let s1 = Some(true);
+        let s2 = Some(false);
+        let n1 = None::<bool>;
+
+        assert!(s1.contains(&true));
+        assert!(!s1.contains(&false));
+
+        assert!(s2.contains(&false));
+        assert!(!s2.contains(&true));
+
+        assert!(!n1.contains(&true));
+        assert!(!n1.contains(&false));
+    }
+
+    #[test]
+    fn test_set_disjoint() {
+        let s1 = Some(true);
+        let s2 = Some(false);
+        let n1 = None::<bool>;
+
+        assert!(!s1.is_disjoint(&s1));
+        assert!(s1.is_disjoint(&s2));
+        assert!(s1.is_disjoint(&n1));
+
+        assert!(!s2.is_disjoint(&s2));
+        assert!(s2.is_disjoint(&s1));
+        assert!(s2.is_disjoint(&n1));
+
+        assert!(n1.is_disjoint(&n1));
+        assert!(n1.is_disjoint(&s1));
+        assert!(n1.is_disjoint(&s2));
+    }
+
+    #[test]
+    fn test_set_subset() {
+        let s1 = Some(true);
+        let s2 = Some(false);
+        let n1 = None::<bool>;
+
+        assert!(s1.is_subset(&s1));
+        assert!(!s1.is_subset(&s2));
+        assert!(!s1.is_subset(&n1));
+
+        assert!(s2.is_subset(&s2));
+        assert!(!s2.is_subset(&s1));
+        assert!(!s2.is_subset(&n1));
+
+        assert!(n1.is_subset(&s1));
+        assert!(n1.is_subset(&s2));
+        assert!(n1.is_subset(&n1));
+    }
+
+    #[test]
+    fn test_mutableset_insert() {
+        let mut n1 = None::<bool>;
+
+        assert!(n1.insert(true));
+        assert!(!n1.insert(true));
+        assert_eq!(n1, Some(true));
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_mutableset_insert_twice() {
+        let mut n1 = None::<bool>;
+        n1.insert(true);
+        n1.insert(false);
+    }
+
+    #[test]
+    fn test_mutableset_remove() {
+        let mut n1 = Some(true);
+
+        assert!(!n1.remove(&false));
+        assert!(n1.remove(&true));
+        assert!(n1.is_none());
     }
 }

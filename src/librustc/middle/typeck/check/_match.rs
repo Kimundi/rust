@@ -252,7 +252,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
         }
 
         if !error_happened {
-            for pats in subpats.iter() {
+            for pats in subpats.as_ref() {
                 for (subpat, arg_ty) in pats.iter().zip(arg_types.iter()) {
                     check_pat(pcx, *subpat, *arg_ty);
                 }
@@ -269,7 +269,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
     }
 
     if error_happened {
-        for pats in subpats.iter() {
+        for pats in subpats.as_ref() {
             for pat in pats.iter() {
                 check_pat(pcx, *pat, ty::mk_err());
             }
@@ -617,7 +617,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
               for &elt in before.iter() {
                   check_pat(pcx, elt, ty::mk_err());
               }
-              for &elt in slice.iter() {
+              for &elt in slice.as_ref() {
                   check_pat(pcx, elt, ty::mk_err());
               }
               for &elt in after.iter() {

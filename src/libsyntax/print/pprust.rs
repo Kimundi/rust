@@ -431,7 +431,7 @@ pub fn print_foreign_mod(s: &mut State, nmod: &ast::ForeignMod,
 
 pub fn print_opt_lifetime(s: &mut State,
                           lifetime: &Option<ast::Lifetime>) -> io::IoResult<()> {
-    for l in lifetime.iter() {
+    for l in lifetime.as_ref() {
         if_ok!(print_lifetime(s, l));
         if_ok!(nbsp(s));
     }
@@ -1315,7 +1315,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         if_ok!(print_block(s, blk));
       }
       ast::ExprForLoop(pat, iter, blk, opt_ident) => {
-        for ident in opt_ident.iter() {
+        for ident in opt_ident.as_ref() {
             if_ok!(word(&mut s.s, "'"));
             if_ok!(print_ident(s, *ident));
             if_ok!(word_space(s, ":"));
@@ -1329,7 +1329,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         if_ok!(print_block(s, blk));
       }
       ast::ExprLoop(blk, opt_ident) => {
-        for ident in opt_ident.iter() {
+        for ident in opt_ident.as_ref() {
             if_ok!(word(&mut s.s, "'"));
             if_ok!(print_ident(s, *ident));
             if_ok!(word_space(s, ":"));
@@ -1500,7 +1500,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       ast::ExprBreak(opt_ident) => {
         if_ok!(word(&mut s.s, "break"));
         if_ok!(space(&mut s.s));
-        for ident in opt_ident.iter() {
+        for ident in opt_ident.as_ref() {
             if_ok!(word(&mut s.s, "'"));
             if_ok!(print_name(s, *ident));
             if_ok!(space(&mut s.s));
@@ -1509,7 +1509,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       ast::ExprAgain(opt_ident) => {
         if_ok!(word(&mut s.s, "continue"));
         if_ok!(space(&mut s.s));
-        for ident in opt_ident.iter() {
+        for ident in opt_ident.as_ref() {
             if_ok!(word(&mut s.s, "'"));
             if_ok!(print_name(s, *ident));
             if_ok!(space(&mut s.s))
@@ -1796,7 +1796,7 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
       ast::PatVec(ref before, slice, ref after) => {
         if_ok!(word(&mut s.s, "["));
         if_ok!(commasep(s, Inconsistent, *before, |s, &p| print_pat(s, p)));
-        for &p in slice.iter() {
+        for &p in slice.as_ref() {
             if !before.is_empty() { if_ok!(word_space(s, ",")); }
             match *p {
                 ast::Pat { node: ast::PatWildMulti, .. } => {
@@ -1874,7 +1874,7 @@ pub fn print_fn_args(s: &mut State, decl: &ast::FnDecl,
     // self type and the args all in the same box.
     if_ok!(rbox(s, 0u, Inconsistent));
     let mut first = true;
-    for &explicit_self in opt_explicit_self.iter() {
+    for &explicit_self in opt_explicit_self.as_ref() {
         let m = match explicit_self {
             ast::SelfStatic => ast::MutImmutable,
             _ => match decl.inputs[0].pat.node {
@@ -2098,7 +2098,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> 
         ast::ViewItemExternMod(id, ref optional_path, _) => {
             if_ok!(head(s, "extern mod"));
             if_ok!(print_ident(s, id));
-            for &(ref p, style) in optional_path.iter() {
+            for &(ref p, style) in optional_path.as_ref() {
                 if_ok!(space(&mut s.s));
                 if_ok!(word(&mut s.s, "="));
                 if_ok!(space(&mut s.s));
@@ -2175,7 +2175,7 @@ pub fn print_ty_fn(s: &mut State,
         if_ok!(word(&mut s.s, "proc"));
     } else if opt_sigil == Some(ast::BorrowedSigil) {
         if_ok!(print_extern_opt_abis(s, opt_abis));
-        for lifetime in opt_region.iter() {
+        for lifetime in opt_region.as_ref() {
             if_ok!(print_lifetime(s, lifetime));
         }
         if_ok!(print_purity(s, purity));

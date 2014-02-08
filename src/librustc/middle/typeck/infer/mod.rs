@@ -761,7 +761,7 @@ impl InferCtxt {
                         format!("{}{}", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
                 }
             }
-            for err in err.iter() {
+            for err in err.as_ref() {
                 ty::note_and_explain_type_err(self.tcx, *err)
             }
         }

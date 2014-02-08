@@ -894,7 +894,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                                  child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
-        for x in child.mut_iter() {
+        for x in child.as_mut() {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
@@ -949,18 +949,18 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 save.level -= 1;
 
                 if right_level > save.level {
-                    for x in save.right.mut_iter() { x.level = save.level }
+                    for x in save.right.as_mut() { x.level = save.level }
                 }
 
                 skew(save);
 
-                for right in save.right.mut_iter() {
+                for right in save.right.as_mut() {
                     skew(right);
-                    for x in right.right.mut_iter() { skew(x) }
+                    for x in right.right.as_mut() { skew(x) }
                 }
 
                 split(save);
-                for x in save.right.mut_iter() { split(x) }
+                for x in save.right.as_mut() { split(x) }
             }
 
             return ret;

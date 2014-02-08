@@ -209,34 +209,6 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Iterator constructors
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Return an iterator over the possibly contained value
-    #[inline]
-    pub fn iter<'r>(&'r self) -> Item<&'r T> {
-        match *self {
-            Some(ref x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
-    }
-
-    /// Return a mutable iterator over the possibly contained value
-    #[inline]
-    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        match *self {
-            Some(ref mut x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
-    }
-
-    /// Return a consuming iterator over the possibly contained value
-    #[inline]
-    pub fn move_iter(self) -> Item<T> {
-        Item{opt: self}
-    }
-
-    /////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
 
@@ -395,39 +367,29 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
-/////////////////////////////////////////////////////////////////////////////
-// The Option Iterator
-/////////////////////////////////////////////////////////////////////////////
-
-/// An iterator that yields either one or zero elements
-#[deriving(Clone, DeepClone)]
-pub struct Item<A> {
-    priv opt: Option<A>
-}
-
-impl<A> Iterator<A> for Item<A> {
+impl<A> Iterator<A> for Option<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.opt.take()
+        self.take()
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        match self.opt {
+        match *self {
             Some(_) => (1, Some(1)),
             None => (0, Some(0)),
         }
     }
 }
 
-impl<A> DoubleEndedIterator<A> for Item<A> {
+impl<A> DoubleEndedIterator<A> for Option<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.opt.take()
+        self.take()
     }
 }
 
-impl<A> ExactSize<A> for Item<A> {}
+impl<A> ExactSize<A> for Option<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Free functions
@@ -542,7 +504,7 @@ mod tests {
         let x = Some(());
         let mut y = Some(5);
         let mut y2 = 0;
-        for _x in x.iter() {
+        for _x in x.as_ref() {
             y2 = y.take_unwrap();
         }
         assert_eq!(y2, 5);
@@ -658,44 +620,6 @@ mod tests {
         let modified_stuff = some_stuff.filtered(|&x| {x < 10});
         assert_eq!(some_stuff.unwrap(), 42);
         assert!(modified_stuff.is_none());
-    }
-
-    #[test]
-    fn test_iter() {
-        let val = 5;
-
-        let x = Some(val);
-        let mut it = x.iter();
-
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next(), Some(&val));
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
-    }
-
-    #[test]
-    fn test_mut_iter() {
-        let val = 5;
-        let new_val = 11;
-
-        let mut x = Some(val);
-        {
-            let mut it = x.mut_iter();
-
-            assert_eq!(it.size_hint(), (1, Some(1)));
-
-            match it.next() {
-                Some(interior) => {
-                    assert_eq!(*interior, val);
-                    *interior = new_val;
-                }
-                None => assert!(false),
-            }
-
-            assert_eq!(it.size_hint(), (0, Some(0)));
-            assert!(it.next().is_none());
-        }
-        assert_eq!(x, Some(new_val));
     }
 
     #[test]

@@ -71,7 +71,7 @@ pub fn check_item(v: &mut CheckCrateVisitor,
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
-                for ex in var.node.disr_expr.iter() {
+                for ex in var.node.disr_expr.as_ref() {
                     v.visit_expr(*ex, true);
                 }
             }

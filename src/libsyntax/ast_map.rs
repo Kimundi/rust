@@ -362,7 +362,7 @@ impl<F: FoldOps> Folder for Ctx<F> {
         // Expressions which are or might be calls:
         {
             let r = expr.get_callee_id();
-            for callee_id in r.iter() {
+            for callee_id in r.as_ref() {
                 self.insert(*callee_id, NodeCalleeScope(expr));
             }
         }

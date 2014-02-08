@@ -1069,7 +1069,7 @@ impl Resolver {
                              self.session.str_of(name)));
                     {
                         let r = child.span_for_namespace(ns);
-                        for sp in r.iter() {
+                        for sp in r.as_ref() {
                             self.session.span_note(*sp,
                                  format!("first definition of {} `{}` here",
                                       namespace_error_to_str(duplicate_type),
@@ -3617,7 +3617,7 @@ impl Resolver {
             // then resolve the ty params
             ItemEnum(ref enum_def, ref generics) => {
                 for variant in (*enum_def).variants.iter() {
-                    for dis_expr in variant.node.disr_expr.iter() {
+                    for dis_expr in variant.node.disr_expr.as_ref() {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|this| {
@@ -4063,7 +4063,7 @@ impl Resolver {
                     {
                         let def_map = this.def_map.borrow();
                         let r = def_map.get().find(&trait_reference.ref_id);
-                        for &def in r.iter() {
+                        for &def in r.as_ref() {
                             new_trait_refs.push(def_id_of_def(*def));
                         }
                     }

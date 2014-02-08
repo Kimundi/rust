@@ -102,9 +102,9 @@ impl Process {
                                    cwd.as_ref(), in_fd, out_fd, err_fd);
 
         unsafe {
-            for pipe in in_pipe.iter() { let _ = libc::close(pipe.input); }
-            for pipe in out_pipe.iter() { let _ = libc::close(pipe.out); }
-            for pipe in err_pipe.iter() { let _ = libc::close(pipe.out); }
+            for pipe in in_pipe.as_ref() { let _ = libc::close(pipe.input); }
+            for pipe in out_pipe.as_ref() { let _ = libc::close(pipe.out); }
+            for pipe in err_pipe.as_ref() { let _ = libc::close(pipe.out); }
         }
 
         match res {

@@ -1114,7 +1114,7 @@ fn trans_adt<'a>(
             for &(_i, e) in fields.iter() {
                 bcx = trans_into(bcx, e, Ignore);
             }
-            for sbi in optbase.iter() {
+            for sbi in optbase.as_ref() {
                 // FIXME #7261: this moves entire base, not just certain fields
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
@@ -1137,7 +1137,7 @@ fn trans_adt<'a>(
                               dest, e_ty);
     }
 
-    for base in optbase.iter() {
+    for base in optbase.as_ref() {
         // FIXME #6573: is it sound to use the destination's repr on the base?
         // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base.expr, "base"));

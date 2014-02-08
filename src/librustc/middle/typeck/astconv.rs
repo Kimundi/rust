@@ -731,7 +731,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     };
     let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
 
-    let self_and_input_tys = self_ty.move_iter().chain(input_tys).collect();
+    let self_and_input_tys = self_ty.chain(input_tys).collect();
 
     let output_ty = match decl.output.node {
         ast::TyInfer => this.ty_infer(decl.output.span),

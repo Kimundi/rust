@@ -348,7 +348,7 @@ impl<'a> LookupContext<'a> {
         // candidates.
         let trait_map: &resolve::TraitMap = &self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
-        for applicable_traits in opt_applicable_traits.iter() {
+        for applicable_traits in opt_applicable_traits.as_ref() {
             let applicable_traits = applicable_traits.borrow();
             for trait_did in applicable_traits.get().iter() {
                 ty::populate_implementations_for_trait_if_necessary(
@@ -358,7 +358,7 @@ impl<'a> LookupContext<'a> {
                 // Look for explicit implementations.
                 let trait_impls = self.tcx().trait_impls.borrow();
                 let opt_impl_infos = trait_impls.get().find(trait_did);
-                for impl_infos in opt_impl_infos.iter() {
+                for impl_infos in opt_impl_infos.as_ref() {
                     let impl_infos = impl_infos.borrow();
                     for impl_info in impl_infos.get().iter() {
                         let mut extension_candidates =
@@ -535,7 +535,7 @@ impl<'a> LookupContext<'a> {
 
         let inherent_impls = self.tcx().inherent_impls.borrow();
         let opt_impl_infos = inherent_impls.get().find(&did);
-        for impl_infos in opt_impl_infos.iter() {
+        for impl_infos in opt_impl_infos.as_ref() {
             let impl_infos = impl_infos.borrow();
             for impl_info in impl_infos.get().iter() {
                 let mut inherent_candidates = self.inherent_candidates
@@ -995,7 +995,7 @@ impl<'a> LookupContext<'a> {
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
                     t.subst(tcx, &all_substs)
                 });
-                Some(fn_sig.inputs[0]).move_iter().chain(args).collect()
+                Some(fn_sig.inputs[0]).chain(args).collect()
             }
             _ => fn_sig.inputs.subst(tcx, &all_substs)
         };

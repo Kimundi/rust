@@ -598,7 +598,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                         generics,
                         parent_visibility);
 
-        for trait_ref in opt_trait_ref.iter() {
+        for trait_ref in opt_trait_ref.as_ref() {
             let trait_ref = instantiate_trait_ref(ccx, trait_ref, selfty);
 
             // Prevent the builtin kind traits from being manually implemented.

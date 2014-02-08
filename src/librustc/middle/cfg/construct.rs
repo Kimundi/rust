@@ -125,7 +125,7 @@ impl CFGBuilder {
                 let pre_exit =
                     self.pats_all(pre.iter().map(|p| *p), pred);
                 let vec_exit =
-                    self.pats_all(vec.iter().map(|p| *p), pre_exit);
+                    self.pats_all(vec.as_ref().map(|p| *p), pre_exit);
                 let post_exit =
                     self.pats_all(post.iter().map(|p| *p), vec_exit);
                 self.add_node(pat.id, [post_exit])
@@ -440,7 +440,7 @@ impl CFGBuilder {
                 pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `opt_expr` evaluated, if Some
 
-        opt_expr.iter().fold(pred, |p, &e| self.expr(e, p))
+        opt_expr.as_ref().fold(pred, |p, &e| self.expr(e, p))
     }
 
     fn straightline(&mut self,

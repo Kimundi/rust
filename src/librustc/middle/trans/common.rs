@@ -199,7 +199,7 @@ pub struct param_substs {
 impl param_substs {
     pub fn validate(&self) {
         for t in self.tys.iter() { assert!(!ty::type_needs_infer(*t)); }
-        for t in self.self_ty.iter() { assert!(!ty::type_needs_infer(*t)); }
+        for t in self.self_ty.as_ref() { assert!(!ty::type_needs_infer(*t)); }
     }
 }
 

@@ -1608,7 +1608,7 @@ fn compile_submatch_continue<'r,
             var(_, repr) => {
                 let (the_kind, val_opt) = adt::trans_switch(bcx, repr, val);
                 kind = the_kind;
-                for &tval in val_opt.iter() { test_val = tval; }
+                for &tval in val_opt.as_ref() { test_val = tval; }
             }
             lit(_) => {
                 let pty = node_id_type(bcx, pat_id);
@@ -2152,7 +2152,7 @@ fn bind_irrefutable_pat<'a>(
                     });
             }
 
-            for &inner_pat in inner.iter() {
+            for &inner_pat in inner.as_ref() {
                 bcx = bind_irrefutable_pat(bcx, inner_pat, val,
                                            binding_mode, cleanup_scope);
             }
@@ -2169,7 +2169,7 @@ fn bind_irrefutable_pat<'a>(
                                                     repr,
                                                     vinfo.disr_val,
                                                     val);
-                    for sub_pat in sub_pats.iter() {
+                    for sub_pat in sub_pats.as_ref() {
                         for (i, argval) in args.vals.iter().enumerate() {
                             bcx = bind_irrefutable_pat(bcx, sub_pat[i],
                                                        *argval, binding_mode,

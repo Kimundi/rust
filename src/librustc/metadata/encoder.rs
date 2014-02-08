@@ -698,7 +698,7 @@ fn encode_method_sort(ebml_w: &mut writer::Encoder, sort: char) {
 
 fn encode_provided_source(ebml_w: &mut writer::Encoder,
                           source_opt: Option<DefId>) {
-    for source in source_opt.iter() {
+    for source in source_opt.as_ref() {
         ebml_w.start_tag(tag_item_method_provided_source);
         let s = def_to_str(*source);
         ebml_w.writer.write(s.as_bytes());
@@ -832,7 +832,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
         None => ()
     }
 
-    for &ast_method in ast_method_opt.iter() {
+    for &ast_method in ast_method_opt.as_ref() {
         let num_params = tpt.generics.type_param_defs().len();
         if num_params > 0u || is_default_impl
             || should_inline(ast_method.attrs) {
@@ -1128,7 +1128,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             ebml_w.writer.write(s.as_bytes());
             ebml_w.end_tag();
         }
-        for ast_trait_ref in opt_trait.iter() {
+        for ast_trait_ref in opt_trait.as_ref() {
             let trait_ref = ty::node_id_to_trait_ref(
                 tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_trait_ref);
@@ -1628,7 +1628,7 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_lang_items);
 
     for (i, def_id) in ecx.tcx.lang_items.items() {
-        for id in def_id.iter() {
+        for id in def_id.as_ref() {
             if id.crate == LOCAL_CRATE {
                 ebml_w.start_tag(tag_lang_items_item);
 

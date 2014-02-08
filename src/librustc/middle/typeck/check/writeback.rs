@@ -280,7 +280,7 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
     resolve_method_map_entry(wbcx.fcx, e.id);
     {
         let r = e.get_callee_id();
-        for callee_id in r.iter() {
+        for callee_id in r.as_ref() {
             resolve_method_map_entry(wbcx.fcx, *callee_id);
         }
     }
@@ -288,7 +288,7 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
     {
         let r = e.get_callee_id();
-        for callee_id in r.iter() {
+        for callee_id in r.as_ref() {
             resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
         }
     }

@@ -331,7 +331,7 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
                 visitor.visit_ty(argument.ty, env.clone())
             }
             visitor.visit_ty(function_declaration.decl.output, env.clone());
-            for bounds in function_declaration.bounds.iter() {
+            for bounds in function_declaration.bounds.as_ref() {
                 walk_ty_param_bounds(visitor, bounds, env.clone())
             }
             visitor.visit_opt_lifetime_ref(
@@ -351,7 +351,7 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
         }
         TyPath(ref path, ref bounds, id) => {
             visitor.visit_path(path, id, env.clone());
-            for bounds in bounds.iter() {
+            for bounds in bounds.as_ref() {
                 walk_ty_param_bounds(visitor, bounds, env.clone())
             }
         }
@@ -391,7 +391,7 @@ pub fn walk_pat<E: Clone, V: Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E)
     match pattern.node {
         PatEnum(ref path, ref children) => {
             visitor.visit_path(path, pattern.id, env.clone());
-            for children in children.iter() {
+            for children in children.as_ref() {
                 for child in children.iter() {
                     visitor.visit_pat(*child, env.clone())
                 }
@@ -429,7 +429,7 @@ pub fn walk_pat<E: Clone, V: Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E)
             for prepattern in prepattern.iter() {
                 visitor.visit_pat(*prepattern, env.clone())
             }
-            for slice_pattern in slice_pattern.iter() {
+            for slice_pattern in slice_pattern.as_ref() {
                 visitor.visit_pat(*slice_pattern, env.clone())
             }
             for postpattern in postpatterns.iter() {

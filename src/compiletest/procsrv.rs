@@ -59,7 +59,7 @@ pub fn run(lib_path: &str,
 
     match opt_process {
         Ok(ref mut process) => {
-            for input in input.iter() {
+            for input in input.as_ref() {
                 process.input().write(input.as_bytes()).unwrap();
             }
             let run::ProcessOutput { status, output, error } = process.finish_with_output();
@@ -91,7 +91,7 @@ pub fn run_background(lib_path: &str,
 
     match opt_process {
         Ok(mut process) => {
-            for input in input.iter() {
+            for input in input.as_ref() {
                 process.input().write(input.as_bytes()).unwrap();
             }
 

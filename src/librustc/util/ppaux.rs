@@ -994,7 +994,7 @@ impl UserString for ty::TraitRef {
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = self.substs.tps.clone();
-            for &t in self.substs.self_ty.iter() { all_tps.push(t); }
+            for &t in self.substs.self_ty.as_ref() { all_tps.push(t); }
             parameterized(tcx, base, &self.substs.regions,
                           all_tps, self.def_id, true)
         } else {

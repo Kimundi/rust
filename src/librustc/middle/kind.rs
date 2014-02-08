@@ -271,7 +271,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     {
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = node_type_substs.get().find(&type_parameter_id);
-        for ts in r.iter() {
+        for ts in r.as_ref() {
             let def_map = cx.tcx.def_map.borrow();
             let type_param_defs = match e.node {
               ExprPath(_) => {
@@ -360,7 +360,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
         TyPath(_, _, id) => {
             let node_type_substs = cx.tcx.node_type_substs.borrow();
             let r = node_type_substs.get().find(&id);
-            for ts in r.iter() {
+            for ts in r.as_ref() {
                 let def_map = cx.tcx.def_map.borrow();
                 let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
                 let generics = ty::lookup_item_type(cx.tcx, did).generics;

@@ -387,7 +387,7 @@ fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
                         cx: Context,
                         child_id: ast::NodeId,
                         _sp: Span) {
-    for &parent_id in cx.parent.iter() {
+    for &parent_id in cx.parent.as_ref() {
         visitor.region_maps.record_encl_scope(child_id, parent_id);
     }
 }
@@ -660,7 +660,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
 
             ast::PatVec(ref pats1, ref pats2, ref pats3) => {
                 pats1.iter().any(|&p| is_binding_pat(p)) ||
-                pats2.iter().any(|&p| is_binding_pat(p)) ||
+                pats2.as_ref().any(|&p| is_binding_pat(p)) ||
                 pats3.iter().any(|&p| is_binding_pat(p))
             }
 

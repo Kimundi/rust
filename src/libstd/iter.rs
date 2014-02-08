@@ -1710,7 +1710,7 @@ impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T,
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for inner in self.frontiter.mut_iter() {
+            for inner in self.frontiter.as_mut() {
                 for x in *inner {
                     return Some(x)
                 }
@@ -1741,7 +1741,7 @@ impl<'a,
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
-            for inner in self.backiter.mut_iter() {
+            for inner in self.backiter.as_mut() {
                 match inner.next_back() {
                     None => (),
                     y => return y

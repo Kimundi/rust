@@ -241,7 +241,7 @@ pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
 fn compute_modes_for_local<'a>(cx: &mut VisitContext,
                                local: &Local) {
     cx.use_pat(local.pat);
-    for &init in local.init.iter() {
+    for &init in local.init.as_ref() {
         cx.use_expr(init, Read);
     }
 }
@@ -304,7 +304,7 @@ impl VisitContext {
             self.visit_stmt(*stmt, ());
         }
 
-        for tail_expr in blk.expr.iter() {
+        for tail_expr in blk.expr.as_ref() {
             self.consume_expr(*tail_expr);
         }
     }
@@ -349,7 +349,7 @@ impl VisitContext {
                         let def_map = self.tcx.def_map.borrow();
                         let def = def_map.get().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
-                        for &id in r.iter() {
+                        for &id in r.as_ref() {
                             let mut moved_variables_set =
                                 self.move_maps
                                     .moved_variables_set
@@ -421,7 +421,7 @@ impl VisitContext {
                     self.consume_expr(field.expr);
                 }
 
-                for with_expr in opt_with.iter() {
+                for with_expr in opt_with.as_ref() {
                     // If there are any fields whose type is move-by-default,
                     // then `with` is consumed, otherwise it is only read
                     let with_ty = ty::expr_ty(self.tcx, *with_expr);
@@ -474,7 +474,7 @@ impl VisitContext {
             ExprIf(cond_expr, then_blk, opt_else_expr) => {
                 self.consume_expr(cond_expr);
                 self.consume_block(then_blk);
-                for else_expr in opt_else_expr.iter() {
+                for else_expr in opt_else_expr.as_ref() {
                     self.consume_expr(*else_expr);
                 }
             }
@@ -541,7 +541,7 @@ impl VisitContext {
             }
 
             ExprRet(ref opt_expr) => {
-                for expr in opt_expr.iter() {
+                for expr in opt_expr.as_ref() {
                     self.consume_expr(*expr);
                 }
             }
@@ -628,7 +628,7 @@ impl VisitContext {
             self.use_pat(*pat);
         }
 
-        for guard in arm.guard.iter() {
+        for guard in arm.guard.as_ref() {
             self.consume_expr(*guard);
         }
 

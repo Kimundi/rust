@@ -670,7 +670,7 @@ impl Visitor<()> for NewNameFinderContext {
                     _ => ()
                 }
                 // visit optional subpattern of pat_ident:
-                for subpat in inner.iter() {
+                for subpat in inner.as_ref() {
                     self.visit_pat(*subpat, ())
                 }
             }

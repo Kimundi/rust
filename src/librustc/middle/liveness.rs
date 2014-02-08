@@ -1027,7 +1027,7 @@ impl Liveness {
                                       opt_expr: Option<@Expr>,
                                       succ: LiveNode)
                                       -> LiveNode {
-        opt_expr.iter().fold(succ, |succ, expr| {
+        opt_expr.as_ref().fold(succ, |succ, expr| {
             self.propagate_through_expr(*expr, succ)
         })
     }
@@ -1709,7 +1709,7 @@ impl Liveness {
                              -> bool {
         if !self.used_on_entry(ln, var) {
             let r = self.should_warn(var);
-            for name in r.iter() {
+            for name in r.as_ref() {
 
                 // annoying: for parameters in funcs like `fn(x: int)
                 // {ret}`, there is only one node, so asking about
@@ -1742,7 +1742,7 @@ impl Liveness {
                                   var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             let r = self.should_warn(var);
-            for name in r.iter() {
+            for name in r.as_ref() {
                 self.tcx.sess.add_lint(DeadAssignment, id, sp,
                     format!("value assigned to `{}` is never read", *name));
             }

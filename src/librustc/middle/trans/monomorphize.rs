@@ -328,12 +328,12 @@ pub fn make_mono_id(ccx: @CrateContext,
                     substs: &param_substs) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
-    let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
+    let substs_iter = substs.self_ty.as_ref().chain(substs.tys.iter());
     let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables={} substs={}",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
-        let vts_iter = substs.self_vtables.iter().chain(vts.iter());
+        let vts_iter = substs.self_vtables.as_ref().chain(vts.iter());
         vts_iter.zip(substs_iter).map(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })

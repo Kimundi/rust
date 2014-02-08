@@ -616,7 +616,7 @@ impl CoherenceChecker {
                     methods.push(ty::method(tcx, local_def(ast_method.id)));
                 }
 
-                for trait_ref in trait_refs.iter() {
+                for trait_ref in trait_refs.as_ref() {
                     let ty_trait_ref = ty::node_id_to_trait_ref(
                         self.crate_context.tcx,
                         trait_ref.ref_id);
@@ -674,14 +674,14 @@ impl CoherenceChecker {
         assert!(associated_traits.is_some());
 
         // Record all the trait methods.
-        for trait_ref in associated_traits.iter() {
+        for trait_ref in associated_traits.as_ref() {
               self.add_trait_impl(trait_ref.def_id, implementation);
         }
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
+            for source in method.provided_source.as_ref() {
                 let mut provided_method_sources = tcx.provided_method_sources
                                                      .borrow_mut();
                 provided_method_sources.get().insert(method.def_id, *source);

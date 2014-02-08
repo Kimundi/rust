@@ -2379,7 +2379,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
         }
 
-        for exp in block.expr.iter() {
+        for exp in block.expr.as_ref() {
             walk_expr(cx, *exp, scope_stack, scope_map);
         }
     }
@@ -2394,7 +2394,7 @@ fn populate_scope_map(cx: &CrateContext,
 
                 walk_pattern(cx, local.pat, scope_stack, scope_map);
 
-                for exp in local.init.iter() {
+                for exp in local.init.as_ref() {
                     walk_expr(cx, *exp, scope_stack, scope_map);
                 }
             }
@@ -2444,7 +2444,7 @@ fn populate_scope_map(cx: &CrateContext,
                     // variables with the same name will cause the problem.
                     let need_new_scope = scope_stack
                         .iter()
-                        .any(|entry| entry.ident.iter().any(|i| i.name == ident.name));
+                        .any(|entry| entry.ident.as_ref().any(|i| i.name == ident.name));
 
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
@@ -2478,7 +2478,7 @@ fn populate_scope_map(cx: &CrateContext,
 
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for &sub_pat in sub_pat_opt.iter() {
+                for &sub_pat in sub_pat_opt.as_ref() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
             }
@@ -2490,7 +2490,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::PatEnum(_, ref sub_pats_opt) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for ref sub_pats in sub_pats_opt.iter() {
+                for ref sub_pats in sub_pats_opt.as_ref() {
                     for &p in sub_pats.iter() {
                         walk_pattern(cx, p, scope_stack, scope_map);
                     }
@@ -2536,7 +2536,7 @@ fn populate_scope_map(cx: &CrateContext,
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
 
-                for &sub_pat in middle_sub_pats.iter() {
+                for &sub_pat in middle_sub_pats.as_ref() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
 
@@ -2703,7 +2703,7 @@ fn populate_scope_map(cx: &CrateContext,
                             walk_pattern(cx, pat, scope_stack, scope_map);
                         }
 
-                        for guard_exp in arm_ref.guard.iter() {
+                        for guard_exp in arm_ref.guard.as_ref() {
                             walk_expr(cx, *guard_exp, scope_stack, scope_map)
                         }
 

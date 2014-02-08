@@ -197,7 +197,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     {
         let r = ex.get_callee_id();
-        for callee_id in r.iter() {
+        for callee_id in r.as_ref() {
             this.id_range.add(*callee_id);
         }
     }
@@ -206,7 +206,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     {
         let adjustments = tcx.adjustments.borrow();
         let r = adjustments.get().find(&ex.id);
-        for &adjustments in r.iter() {
+        for &adjustments in r.as_ref() {
             this.guarantee_adjustments(ex, *adjustments);
         }
     }

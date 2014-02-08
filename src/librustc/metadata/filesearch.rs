@@ -232,7 +232,7 @@ pub fn rust_path() -> ~[Path] {
         cwd.pop();
     }
     let h = os::homedir();
-    for h in h.iter() {
+    for h in h.as_ref() {
         let p = h.join(".rust");
         if !env_rust_path.contains(&p) && p.exists() {
             env_rust_path.push(p);

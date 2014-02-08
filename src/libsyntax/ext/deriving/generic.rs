@@ -562,7 +562,7 @@ impl<'a> MethodDef<'a> {
         let args = arg_types.move_iter().map(|(name, ty)| {
             trait_.cx.arg(trait_.span, name, ty)
         });
-        let args = self_arg.move_iter().chain(args).collect();
+        let args = self_arg.chain(args).collect();
 
         let ret_type = self.get_ret_ty(trait_, generics, type_ident);
 

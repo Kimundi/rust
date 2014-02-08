@@ -264,7 +264,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     {
         let adjustments = rcx.fcx.inh.adjustments.borrow();
         let r = adjustments.get().find(&expr.id);
-        for &adjustment in r.iter() {
+        for &adjustment in r.as_ref() {
             debug!("adjustment={:?}", adjustment);
             match **adjustment {
                 ty::AutoDerefRef(
@@ -272,7 +272,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 {
                     let expr_ty = rcx.resolve_node_type(expr.id);
                     constrain_derefs(rcx, expr, autoderefs, expr_ty);
-                    for autoref in opt_autoref.iter() {
+                    for autoref in opt_autoref.as_ref() {
                         guarantor::for_autoref(rcx, expr, autoderefs, autoref);
 
                         // Require that the resulting region encompasses
@@ -559,7 +559,7 @@ fn constrain_call(rcx: &mut Rcx,
     }
 
     // as loop above, but for receiver
-    for &r in receiver.iter() {
+    for &r in receiver.as_ref() {
         debug!("Receiver");
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
@@ -899,7 +899,7 @@ pub mod guarantor {
             sub_region: ty::Region,
             sup_region: Option<ty::Region>)
         {
-            for r in sup_region.iter() {
+            for r in sup_region.as_ref() {
                 rcx.fcx.mk_subr(true, infer::Reborrow(expr.span),
                                 sub_region, *r);
             }
@@ -922,7 +922,7 @@ pub mod guarantor {
         debug!("guarantor::for_by_ref(expr={:?}, callee_scope={:?}) category={:?}",
                expr.id, callee_scope, expr_cat);
         let minimum_lifetime = ty::ReScope(callee_scope);
-        for guarantor in expr_cat.guarantor.iter() {
+        for guarantor in expr_cat.guarantor.as_ref() {
             mk_subregion_due_to_derefence(rcx, expr.span,
                                           minimum_lifetime, *guarantor);
         }
@@ -1259,13 +1259,12 @@ pub mod guarantor {
             ast::PatWild | ast::PatWildMulti => {}
             ast::PatIdent(ast::BindByRef(_), _, opt_p) => {
                 link(rcx, pat.span, pat.id, guarantor);
-
-                for p in opt_p.iter() {
+                for p in opt_p.as_ref() {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
             ast::PatIdent(_, _, opt_p) => {
-                for p in opt_p.iter() {
+                for p in opt_p.as_ref() {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
@@ -1300,7 +1299,7 @@ pub mod guarantor {
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);
-                for &p in slice.iter() {
+                for &p in slice.as_ref() {
                     link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
                 link_ref_bindings_in_pats(rcx, after, guarantor1);

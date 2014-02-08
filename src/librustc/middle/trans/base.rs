@@ -1239,7 +1239,7 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
                        sp: Option<Span>,
                        block_arena: &'a TypedArena<Block<'a>>)
                        -> FunctionContext<'a> {
-    for p in param_substs.iter() { p.validate(); }
+    for p in param_substs.as_ref() { p.validate(); }
 
     debug!("new_fn_ctxt(path={},
            id={:?}, \
@@ -1533,7 +1533,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
     // This somewhat improves single-stepping experience in debugger.
     unsafe {
         let llreturn = fcx.llreturn.get();
-        for &llreturn in llreturn.iter() {
+        for &llreturn in llreturn.as_ref() {
             llvm::LLVMMoveBasicBlockAfter(llreturn, bcx.llbb);
         }
     }

@@ -71,7 +71,7 @@ impl TempDir {
 
 impl Drop for TempDir {
     fn drop(&mut self) {
-        for path in self.path.iter() {
+        for path in self.path.as_ref() {
             if path.exists() {
                 // FIXME: is failing the right thing to do?
                 fs::rmdir_recursive(path).unwrap();

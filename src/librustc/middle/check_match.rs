@@ -410,7 +410,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         let mut found = ~[];
         for r in m.iter() {
             let r = pat_ctor_id(cx, r[0]);
-            for id in r.iter() {
+            for id in r.as_ref() {
                 if !found.contains(id) {
                     found.push((*id).clone());
                 }

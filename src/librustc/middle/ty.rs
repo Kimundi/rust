@@ -1461,7 +1461,7 @@ pub fn type_needs_subst(ty: t) -> bool {
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.self_ty.iter().any(|&t| type_is_error(t)) ||
+    tref.substs.self_ty.as_ref().any(|&t| type_is_error(t)) ||
         tref.substs.tps.iter().any(|&t| type_is_error(t))
 }
 
@@ -4660,7 +4660,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         // Record the trait->implementation mappings, if applicable.
         let associated_traits = csearch::get_impl_trait(tcx,
                                                         implementation.did);
-        for trait_ref in associated_traits.iter() {
+        for trait_ref in associated_traits.as_ref() {
             record_trait_implementation(tcx,
                                         trait_ref.def_id,
                                         implementation);
@@ -4669,7 +4669,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
+            for source in method.provided_source.as_ref() {
                 let mut provided_method_sources =
                     tcx.provided_method_sources.borrow_mut();
                 provided_method_sources.get().insert(method.def_id, *source);
@@ -4732,7 +4732,7 @@ pub fn populate_implementations_for_trait_if_necessary(
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
+            for source in method.provided_source.as_ref() {
                 let mut provided_method_sources =
                     tcx.provided_method_sources.borrow_mut();
                 provided_method_sources.get().insert(method.def_id, *source);

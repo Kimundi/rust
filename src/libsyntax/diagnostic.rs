@@ -392,7 +392,7 @@ fn custom_highlight_lines(cm: &codemap::CodeMap,
 }
 
 fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) -> io::IoResult<()> {
-    for ei in sp.expn_info.iter() {
+    for ei in sp.expn_info.as_ref() {
         let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),

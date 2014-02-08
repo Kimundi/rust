@@ -457,7 +457,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_expr(&mut self, expression: &Expr, env: ()) {
         {
             let optional_callee_id = expression.get_callee_id();
-            for callee_id in optional_callee_id.iter() {
+            for callee_id in optional_callee_id.as_ref() {
                 self.operation.visit_id(*callee_id)
             }
         }
@@ -605,7 +605,7 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
         }
         PatVec(ref before, ref slice, ref after) => {
             before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
-                slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
+                slice.as_ref().advance(|&p| walk_pat(p, |p| it(p))) &&
                 after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
         PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |

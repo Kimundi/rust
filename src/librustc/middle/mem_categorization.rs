@@ -983,7 +983,7 @@ impl mem_categorization_ctxt {
               for &before_pat in before.iter() {
                   self.cat_pattern(elt_cmt, before_pat, |x,y| op(x,y));
               }
-              for &slice_pat in slice.as_ref() {
+              for slice_pat in slice.iter() {
                   let slice_ty = self.pat_ty(slice_pat);
                   let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));

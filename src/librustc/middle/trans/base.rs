@@ -1533,7 +1533,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
     // This somewhat improves single-stepping experience in debugger.
     unsafe {
         let llreturn = fcx.llreturn.get();
-        for &llreturn in llreturn.as_ref() {
+        for llreturn in llreturn.iter() {
             llvm::LLVMMoveBasicBlockAfter(llreturn, bcx.llbb);
         }
     }

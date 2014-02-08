@@ -493,7 +493,7 @@ impl<'a> Context<'a> {
             allow => fail!(),
         }
 
-        for &span in note.as_ref() {
+        for span in note.iter() {
             self.tcx.sess.span_note(span, "lint level defined here");
         }
     }

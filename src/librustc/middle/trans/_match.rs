@@ -1608,7 +1608,7 @@ fn compile_submatch_continue<'r,
             var(_, repr) => {
                 let (the_kind, val_opt) = adt::trans_switch(bcx, repr, val);
                 kind = the_kind;
-                for &tval in val_opt.as_ref() { test_val = tval; }
+                for tval in val_opt.iter() { test_val = tval; }
             }
             lit(_) => {
                 let pty = node_id_type(bcx, pat_id);

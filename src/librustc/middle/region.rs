@@ -387,7 +387,7 @@ fn record_superlifetime(visitor: &mut RegionResolutionVisitor,
                         cx: Context,
                         child_id: ast::NodeId,
                         _sp: Span) {
-    for &parent_id in cx.parent.as_ref() {
+    for parent_id in cx.parent.iter() {
         visitor.region_maps.record_encl_scope(child_id, parent_id);
     }
 }

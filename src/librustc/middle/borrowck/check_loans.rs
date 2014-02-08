@@ -792,7 +792,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt={}", cmt.repr(this.tcx()));
               let r = opt_loan_path(cmt);
-              for &lp in r.as_ref() {
+              for lp in r.iter() {
                   this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
               }
           }

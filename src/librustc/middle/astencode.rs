@@ -951,7 +951,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let node_types = tcx.node_types.borrow();
         let r = node_types.get().find(&(id as uint));
-        for &ty in r.as_ref() {
+        for ty in r.iter() {
             ebml_w.tag(c::tag_table_node_type, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -977,7 +977,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let freevars = tcx.freevars.borrow();
         let r = freevars.get().find(&id);
-        for &fv in r.as_ref() {
+        for fv in r.iter() {
             ebml_w.tag(c::tag_table_freevars, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -993,7 +993,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let tcache = tcx.tcache.borrow();
         let r = tcache.get().find(&lid);
-        for &tpbt in r.as_ref() {
+        for tpbt in r.iter() {
             ebml_w.tag(c::tag_table_tcache, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1021,7 +1021,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let method_map = maps.method_map.borrow();
         let r = method_map.get().find(&id);
-        for &mme in r.as_ref() {
+        for mme in r.iter() {
             ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1034,7 +1034,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let vtable_map = maps.vtable_map.borrow();
         let r = vtable_map.get().find(&id);
-        for &dr in r.as_ref() {
+        for dr in r.iter() {
             ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1060,7 +1060,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let capture_map = maps.capture_map.borrow();
         let r = capture_map.get().find(&id);
-        for &cap_vars in r.as_ref() {
+        for cap_vars in r.iter() {
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {

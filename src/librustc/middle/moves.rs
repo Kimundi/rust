@@ -241,7 +241,7 @@ pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
 fn compute_modes_for_local<'a>(cx: &mut VisitContext,
                                local: &Local) {
     cx.use_pat(local.pat);
-    for &init in local.init.as_ref() {
+    for init in local.init.iter() {
         cx.use_expr(init, Read);
     }
 }
@@ -349,7 +349,7 @@ impl VisitContext {
                         let def_map = self.tcx.def_map.borrow();
                         let def = def_map.get().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
-                        for &id in r.as_ref() {
+                        for id in r.iter() {
                             let mut moved_variables_set =
                                 self.move_maps
                                     .moved_variables_set

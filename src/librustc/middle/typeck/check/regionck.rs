@@ -264,7 +264,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     {
         let adjustments = rcx.fcx.inh.adjustments.borrow();
         let r = adjustments.get().find(&expr.id);
-        for &adjustment in r.as_ref() {
+        for adjustment in r.iter() {
             debug!("adjustment={:?}", adjustment);
             match **adjustment {
                 ty::AutoDerefRef(
@@ -559,7 +559,7 @@ fn constrain_call(rcx: &mut Rcx,
     }
 
     // as loop above, but for receiver
-    for &r in receiver.as_ref() {
+    for r in receiver.iter() {
         debug!("Receiver");
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
@@ -1299,7 +1299,7 @@ pub mod guarantor {
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);
-                for &p in slice.as_ref() {
+                for p in slice.iter() {
                     link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
                 link_ref_bindings_in_pats(rcx, after, guarantor1);

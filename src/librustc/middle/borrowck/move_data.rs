@@ -653,7 +653,7 @@ impl FlowedMoveData {
                     ret = false;
                 }
             } else {
-                for &loan_path_index in opt_loan_path_index.as_ref() {
+                for loan_path_index in opt_loan_path_index.iter() {
                     let cont = self.move_data.each_base_path(moved_path, |p| {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`

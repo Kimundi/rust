@@ -1796,7 +1796,7 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
       ast::PatVec(ref before, slice, ref after) => {
         if_ok!(word(&mut s.s, "["));
         if_ok!(commasep(s, Inconsistent, *before, |s, &p| print_pat(s, p)));
-        for &p in slice.as_ref() {
+        for p in slice.iter() {
             if !before.is_empty() { if_ok!(word_space(s, ",")); }
             match *p {
                 ast::Pat { node: ast::PatWildMulti, .. } => {
@@ -1874,7 +1874,7 @@ pub fn print_fn_args(s: &mut State, decl: &ast::FnDecl,
     // self type and the args all in the same box.
     if_ok!(rbox(s, 0u, Inconsistent));
     let mut first = true;
-    for &explicit_self in opt_explicit_self.as_ref() {
+    for explicit_self in opt_explicit_self.iter() {
         let m = match explicit_self {
             ast::SelfStatic => ast::MutImmutable,
             _ => match decl.inputs[0].pat.node {

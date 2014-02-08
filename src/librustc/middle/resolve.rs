@@ -4063,7 +4063,7 @@ impl Resolver {
                     {
                         let def_map = this.def_map.borrow();
                         let r = def_map.get().find(&trait_reference.ref_id);
-                        for &def in r.as_ref() {
+                        for def in r.iter() {
                             new_trait_refs.push(def_id_of_def(*def));
                         }
                     }

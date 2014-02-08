@@ -206,7 +206,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     {
         let adjustments = tcx.adjustments.borrow();
         let r = adjustments.get().find(&ex.id);
-        for &adjustments in r.as_ref() {
+        for adjustments in r.iter() {
             this.guarantee_adjustments(ex, *adjustments);
         }
     }

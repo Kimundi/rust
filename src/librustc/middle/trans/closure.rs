@@ -321,7 +321,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
             llupvars.get().insert(def_id.node, upvarptr);
         }
 
-        for &env_pointer_alloca in env_pointer_alloca.as_ref() {
+        for env_pointer_alloca in env_pointer_alloca.iter() {
             debuginfo::create_captured_var_metadata(
                 bcx,
                 def_id.node,

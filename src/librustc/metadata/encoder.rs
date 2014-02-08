@@ -698,9 +698,9 @@ fn encode_method_sort(ebml_w: &mut writer::Encoder, sort: char) {
 
 fn encode_provided_source(ebml_w: &mut writer::Encoder,
                           source_opt: Option<DefId>) {
-    for source in source_opt.as_ref() {
+    for source in source_opt.iter() {
         ebml_w.start_tag(tag_item_method_provided_source);
-        let s = def_to_str(*source);
+        let s = def_to_str(source);
         ebml_w.writer.write(s.as_bytes());
         ebml_w.end_tag();
     }
@@ -832,7 +832,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
         None => ()
     }
 
-    for &ast_method in ast_method_opt.as_ref() {
+    for ast_method in ast_method_opt.iter() {
         let num_params = tpt.generics.type_param_defs().len();
         if num_params > 0u || is_default_impl
             || should_inline(ast_method.attrs) {

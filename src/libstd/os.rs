@@ -1478,8 +1478,8 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
-        for s in oldhome.as_ref() { setenv("HOME", *s) }
-        for s in olduserprofile.as_ref() { setenv("USERPROFILE", *s) }
+        for s in oldhome.iter() { setenv("HOME", s) }
+        for s in olduserprofile.iter() { setenv("USERPROFILE", s) }
     }
 
     #[test]

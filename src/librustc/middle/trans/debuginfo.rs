@@ -2536,7 +2536,7 @@ fn populate_scope_map(cx: &CrateContext,
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
 
-                for &sub_pat in middle_sub_pats.as_ref() {
+                for sub_pat in middle_sub_pats.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
 

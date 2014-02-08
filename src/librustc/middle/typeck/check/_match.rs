@@ -617,7 +617,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
               for &elt in before.iter() {
                   check_pat(pcx, elt, ty::mk_err());
               }
-              for &elt in slice.as_ref() {
+              for elt in slice.iter() {
                   check_pat(pcx, elt, ty::mk_err());
               }
               for &elt in after.iter() {

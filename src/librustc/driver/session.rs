@@ -476,7 +476,7 @@ pub fn collect_crate_types(session: &Session,
         return ~[CrateTypeExecutable];
     }
     let mut base = session.opts.crate_types.clone();
-    let mut iter = attrs.iter().filter_map(|a| {
+    let iter = attrs.iter().filter_map(|a| {
         if a.name().equiv(&("crate_type")) {
             match a.value_str() {
                 Some(ref n) if n.equiv(&("rlib")) => Some(CrateTypeRlib),
@@ -505,7 +505,7 @@ pub fn collect_crate_types(session: &Session,
             None
         }
     });
-    base.extend(&mut iter);
+    base.extend(iter);
     if base.len() == 0 {
         base.push(CrateTypeExecutable);
     }

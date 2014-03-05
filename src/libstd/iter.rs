@@ -76,13 +76,13 @@ use mem;
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
     /// Build a container with elements from an external iterator.
-    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> Self;
+    fn from_iterator<T: Iterator<A>>(iterator: T) -> Self;
 }
 
 /// A type growable from an `Iterator` implementation
 pub trait Extendable<A>: FromIterator<A> {
     /// Extend a container with the elements yielded by an iterator
-    fn extend<T: Iterator<A>>(&mut self, iterator: &mut T);
+    fn extend<T: Iterator<A>>(&mut self, iterator: T);
 }
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -460,7 +460,7 @@ pub trait Iterator<A> {
     /// ```
     #[inline]
     fn collect<B: FromIterator<A>>(&mut self) -> B {
-        FromIterator::from_iterator(self)
+        FromIterator::from_iterator(self.by_ref())
     }
 
     /// Loops through the entire iterator, collecting all of the elements into
@@ -2350,8 +2350,8 @@ mod tests {
 
     #[test]
     fn test_counter_from_iter() {
-        let mut it = count(0, 5).take(10);
-        let xs: ~[int] = FromIterator::from_iterator(&mut it);
+        let it = count(0, 5).take(10);
+        let xs: ~[int] = FromIterator::from_iterator(it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 

@@ -208,11 +208,19 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
 }
 
 impl<A> FromIterator<A> for OptVec<A> {
-    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> OptVec<A> {
+    fn from_iterator<T: Iterator<A>>(mut iterator: T) -> OptVec<A> {
         let mut r = Empty;
-        for x in *iterator {
+        for x in iterator {
             r.push(x);
         }
         r
+    }
+}
+
+impl<T> Extendable<T> for OptVec<T> {
+    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+        for val in iter {
+            self.push(val);
+        }
     }
 }

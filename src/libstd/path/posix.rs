@@ -275,7 +275,7 @@ impl GenericPath for Path {
                     (None, None) => break,
                     (Some(a), None) => {
                         comps.push(a);
-                        comps.extend(&mut ita);
+                        comps.extend(ita.by_ref());
                         break;
                     }
                     (None, _) => comps.push(dot_dot_static),
@@ -288,7 +288,7 @@ impl GenericPath for Path {
                             comps.push(dot_dot_static);
                         }
                         comps.push(a);
-                        comps.extend(&mut ita);
+                        comps.extend(ita.by_ref());
                         break;
                     }
                 }

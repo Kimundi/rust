@@ -120,7 +120,6 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
 }
 
 impl Iterator<Path> for Paths {
-
     fn next(&mut self) -> Option<Path> {
         loop {
             if self.dir_patterns.is_empty() || self.todo.is_empty() {
@@ -144,12 +143,11 @@ impl Iterator<Path> for Paths {
                     // so we don't need to check the children
                     return Some(path);
                 } else {
-                    self.todo.extend(&mut list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
+                    self.todo.extend(list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
                 }
             }
         }
     }
-
 }
 
 fn list_dir_sorted(path: &Path) -> ~[Path] {

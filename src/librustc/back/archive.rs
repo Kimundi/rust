@@ -42,8 +42,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     let ar = get_ar_prog(sess);
 
     let mut args = ~[args.to_owned()];
-    let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
-    args.extend(&mut paths);
+    let paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
+    args.extend(paths);
     debug!("{} {}", ar, args.connect(" "));
     match cwd {
         Some(p) => { debug!("inside {}", p.display()); }
@@ -183,7 +183,7 @@ impl Archive {
 
         // Finally, add all the renamed files to this archive
         let mut args = ~[&self.dst];
-        args.extend(&mut inputs.iter());
+        args.extend(inputs.iter());
         run_ar(self.sess, "r", None, args.as_slice());
         Ok(())
     }

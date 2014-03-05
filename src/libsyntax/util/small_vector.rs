@@ -30,9 +30,9 @@ impl<T> Container for SmallVector<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iterator<I: Iterator<T>>(iter: &mut I) -> SmallVector<T> {
+    fn from_iterator<I: Iterator<T>>(mut iter: I) -> SmallVector<T> {
         let mut v = Zero;
-        for val in *iter {
+        for val in iter {
             v.push(val);
         }
         v
@@ -40,8 +40,8 @@ impl<T> FromIterator<T> for SmallVector<T> {
 }
 
 impl<T> Extendable<T> for SmallVector<T> {
-    fn extend<I: Iterator<T>>(&mut self, iter: &mut I) {
-        for val in *iter {
+    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+        for val in iter {
             self.push(val);
         }
     }

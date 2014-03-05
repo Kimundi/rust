@@ -712,7 +712,7 @@ impl<K> Iterator<K> for SetMoveItems<K> {
 }
 
 impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V, H> {
+    fn from_iterator<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(Default::default(), lower);
         map.extend(iter);
@@ -721,8 +721,8 @@ impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
 }
 
 impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
-    fn extend<T: Iterator<(K, V)>>(&mut self, iter: &mut T) {
-        for (k, v) in *iter {
+    fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
+        for (k, v) in iter {
             self.insert(k, v);
         }
     }
@@ -900,7 +900,7 @@ impl<T: fmt::Show + Hash<S> + Eq, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 }
 
 impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iterator<Iter: Iterator<T>>(iter: &mut Iter) -> HashSet<T, H> {
+    fn from_iterator<Iter: Iterator<T>>(iter: Iter) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(Default::default(), lower);
         set.extend(iter);
@@ -909,8 +909,8 @@ impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 }
 
 impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
-    fn extend<Iter: Iterator<T>>(&mut self, iter: &mut Iter) {
-        for k in *iter {
+    fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+        for k in iter {
             self.insert(k);
         }
     }

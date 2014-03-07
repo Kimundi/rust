@@ -3696,11 +3696,8 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> Vec<@Method> {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
                         ItemTrait(_, _, ref ms) => {
-                            let (_, p) =
-                                ast_util::split_trait_methods(ms.as_slice());
-                            p.iter()
-                             .map(|m| method(cx, ast_util::local_def(m.id)))
-                             .collect()
+                            let (_, p) = ast_util::split_trait_methods(*ms);
+                            p.map(|m| method(cx, ast_util::local_def(m.id)))
                         }
                         _ => {
                             cx.sess.bug(format!("provided_trait_methods: \

@@ -519,9 +519,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                            |tmt| ty::mk_rptr(tcx, r, tmt))
             }
             ast::TyTup(ref fields) => {
-                let flds = fields.iter()
-                                 .map(|&t| ast_ty_to_ty(this, rscope, t))
-                                 .collect();
+                let flds = fields.map(|&t| ast_ty_to_ty(this, rscope, t));
                 ty::mk_tup(tcx, flds)
             }
             ast::TyBareFn(ref bf) => {

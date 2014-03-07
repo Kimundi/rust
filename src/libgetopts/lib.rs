@@ -504,7 +504,7 @@ impl Fail_ {
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
 /// Use `to_err_msg` to get an error message.
 pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
-    let opts = optgrps.map(|x| x.long_to_short());
+    let opts: ~[Opt] = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
 
     fn f(_x: uint) -> ~[Optval] { return ~[]; }

@@ -222,7 +222,7 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
 pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
-    let owned_tests = tests.map(|t| {
+    let owned_tests: ~[TestDescAndFn] = tests.iter().map(|t| {
         match t.testfn {
             StaticTestFn(f) =>
             TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
@@ -234,7 +234,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
                 fail!("non-static tests passed to test::test_main_static");
             }
         }
-    });
+    }).collect();
     test_main(args, owned_tests)
 }
 
@@ -807,7 +807,7 @@ fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
              callback: |e: TestEvent| -> io::IoResult<()>) -> io::IoResult<()> {
     let filtered_tests = filter_tests(opts, tests);
-    let filtered_descs = filtered_tests.map(|t| t.desc.clone());
+    let filtered_descs: ~[TestDesc] = filtered_tests.iter().map(|t| t.desc.clone()).collect();
 
     try!(callback(TeFiltered(filtered_descs)));
 

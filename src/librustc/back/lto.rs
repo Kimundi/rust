@@ -70,8 +70,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
     }
 
     // Internalize everything but the reachable symbols of the current module
-    let cstrs = reachable.map(|s| s.to_c_str());
-    let arr = cstrs.map(|c| c.with_ref(|p| p));
+    let arr = reachable.iter().map(|s| s.to_c_str().with_ref(|p| p)).collect::<~[*i8]>();
     let ptr = arr.as_ptr();
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod, ptr as **libc::c_char,

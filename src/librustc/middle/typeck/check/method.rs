@@ -608,7 +608,7 @@ impl<'a> LookupContext<'a> {
         debug!("push_candidates_from_impl: {} {} {}",
                token::get_name(self.m_name),
                impl_info.ident.repr(self.tcx()),
-               impl_info.methods.map(|m| m.ident).repr(self.tcx()));
+               impl_info.methods.iter().map(|m| m.ident).collect::<~[ast::Ident]>().repr(self.tcx()));
 
         let idx = {
             match impl_info.methods

@@ -246,7 +246,7 @@ impl<'a> Stats for &'a [f64] {
 
     fn median_abs_dev(self) -> f64 {
         let med = self.median();
-        let abs_devs = self.map(|&v| num::abs(med - v));
+        let abs_devs: ~[f64] = self.iter().map(|&v| num::abs(med - v)).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
         abs_devs.median() * 1.4826

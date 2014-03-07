@@ -74,7 +74,7 @@ impl<T> OptVec<T> {
     pub fn map<U>(&self, op: |&T| -> U) -> OptVec<U> {
         match *self {
             Empty => Empty,
-            Vec(ref v) => Vec(v.map(op))
+            Vec(ref v) => Vec(v.iter().map(op).collect())
         }
     }
 

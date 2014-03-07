@@ -87,7 +87,7 @@ pub mod rt {
 
     impl<'a> ToSource for &'a [@ast::Item] {
         fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect("\n\n")
+            self.iter().map(|i| i.to_source()).collect::<~[~str]>().connect("\n\n")
         }
     }
 
@@ -99,7 +99,7 @@ pub mod rt {
 
     impl<'a> ToSource for &'a [ast::Ty] {
         fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect(", ")
+            self.iter().map(|i| i.to_source()).collect::<~[~str]>().connect(", ")
         }
     }
 

@@ -2167,7 +2167,7 @@ impl Parser {
                     self.parse_seq_to_before_end(&close_delim,
                                                  seq_sep_none(),
                                                  |p| p.parse_token_tree());
-                result.push_all_move(trees);
+                result.extend(&mut trees.move_iter());
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
@@ -3827,7 +3827,7 @@ impl Parser {
     fn parse_method(&mut self, already_parsed_attrs: Option<Vec<Attribute> >) -> @Method {
         let next_attrs = self.parse_outer_attributes();
         let attrs = match already_parsed_attrs {
-            Some(mut a) => { a.push_all_move(next_attrs); a }
+            Some(mut a) => { a.extend(&mut next_attrs.move_iter()); a }
             None => next_attrs
         };
 

@@ -346,18 +346,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     v
 }
 
-// Functional utilities
-
-/**
- * Apply a function to each element of a vector and return a concatenation
- * of each result vector
- */
-pub fn flat_map<T, U>(v: &[T], f: |t: &T| -> ~[U]) -> ~[U] {
-    let mut result = ~[];
-    for elem in v.iter() { result.push_all_move(f(elem)); }
-    result
-}
-
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
@@ -910,11 +898,6 @@ pub trait ImmutableVector<'a, T> {
     fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, or `None` if it is empty.
     fn last(&self) -> Option<&'a T>;
-    /**
-     * Apply a function to each element of a vector and return a concatenation
-     * of each result vector
-     */
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U];
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
     unsafe fn unsafe_ref(self, index: uint) -> &'a T;
@@ -942,11 +925,6 @@ pub trait ImmutableVector<'a, T> {
      * not found.
      */
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
-
-    /// Deprecated, use iterators where possible
-    /// (`self.iter().map(f)`). Apply a function to each element
-    /// of a vector and return the results.
-    fn map<U>(&self, |t: &T| -> U) -> ~[U];
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -1103,11 +1081,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U] {
-        flat_map(*self, f)
-    }
-
-    #[inline]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
         transmute(self.repr().data.offset(index as int))
     }
@@ -1135,10 +1108,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             lim >>= 1;
         }
         return None;
-    }
-
-    fn map<U>(&self, f: |t: &T| -> U) -> ~[U] {
-        self.iter().map(f).collect()
     }
 
     fn shift_ref(&mut self) -> Option<&'a T> {
@@ -1338,6 +1307,8 @@ pub trait OwnedVector<T> {
     /// a.push_all_move(~[~2, ~3, ~4]);
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
+    /// deprecated
+    #[cfg(stage0)]
     fn push_all_move(&mut self, rhs: ~[T]);
     /// Remove the last element from a vector and return it, or `None` if it is empty
     fn pop(&mut self) -> Option<T>;
@@ -1512,6 +1483,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
+    #[cfg(stage0)]
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let self_len = self.len();
@@ -1539,7 +1511,6 @@ impl<T> OwnedVector<T> for ~[T] {
             }
         }
     }
-
 
     #[inline]
     fn shift(&mut self) -> Option<T> {
@@ -1590,6 +1561,7 @@ impl<T> OwnedVector<T> for ~[T] {
             None
         }
     }
+
     fn swap_remove(&mut self, index: uint) -> Option<T> {
         let ln = self.len();
         if index < ln - 1 {
@@ -1599,6 +1571,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
         self.pop()
     }
+
     fn truncate(&mut self, newlen: uint) {
         let oldlen = self.len();
         assert!(newlen <= oldlen);
@@ -1712,6 +1685,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
             self.push((*elt).clone())
         }
     }
+
     fn grow(&mut self, n: uint, initval: &T) {
         let new_len = self.len() + n;
         self.reserve(new_len);
@@ -1722,6 +1696,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
             i += 1u;
         }
     }
+
     fn grow_set(&mut self, index: uint, initval: &T, val: T) {
         let l = self.len();
         if index >= l { self.grow(index - l + 1u, initval); }
@@ -2130,7 +2105,6 @@ pub trait MutableVector<'a, T> {
     /// assert!(v == ["a", "d", "c", "b"]);
     /// ```
     fn swap(self, a: uint, b: uint);
-
 
     /// Divides one `&mut` into two at an index.
     ///

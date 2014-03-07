@@ -1197,8 +1197,8 @@ impl RegionVarBindings {
             format!("collect_error_for_expanding_node() could not find error \
                   for var {:?}, lower_bounds={}, upper_bounds={}",
                  node_idx,
-                 lower_bounds.map(|x| x.region).repr(self.tcx),
-                 upper_bounds.map(|x| x.region).repr(self.tcx)));
+                 lower_bounds.iter().map(|x| x.region).collect::<~[Region]>().repr(self.tcx),
+                 upper_bounds.iter().map(|x| x.region).collect::<~[Region]>().repr(self.tcx)));
     }
 
     fn collect_error_for_contracting_node(
@@ -1244,7 +1244,7 @@ impl RegionVarBindings {
             format!("collect_error_for_contracting_node() could not find error \
                   for var {:?}, upper_bounds={}",
                  node_idx,
-                 upper_bounds.map(|x| x.region).repr(self.tcx)));
+                 upper_bounds.iter().map(|x| x.region).collect::<~[Region]>().repr(self.tcx)));
     }
 
     fn collect_concrete_regions(&self,

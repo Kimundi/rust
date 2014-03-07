@@ -545,7 +545,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
         } else {
             let mut s_ = vec::with_capacity(flags.width);
             s_.grow(n, &(' ' as u8));
-            s_.push_all_move(s);
+            s_.extend(&mut s.move_iter());
             s = s_;
         }
     }

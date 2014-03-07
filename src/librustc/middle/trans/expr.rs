@@ -1019,7 +1019,7 @@ fn trans_rec_or_struct<'a>(
     with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
-        let numbered_fields = fields.map(|field| {
+        let numbered_fields = fields.iter().map(|field| {
             let opt_pos =
                 field_tys.iter().position(|field_ty|
                                           field_ty.ident.name == field.ident.node.name);
@@ -1033,7 +1033,7 @@ fn trans_rec_or_struct<'a>(
                                       "Couldn't find field in struct type")
                 }
             }
-        });
+        }).collect::<~[(uint, @ast::Expr)]>();
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = Vec::new();

@@ -690,7 +690,7 @@ impl InferCtxt {
     }
 
     pub fn tys_to_str(&self, ts: &[ty::t]) -> ~str {
-        let tstrs = ts.map(|t| self.ty_to_str(*t));
+        let tstrs = ts.iter().map(|t| self.ty_to_str(*t)).collect::<~[~str]>();
         format!("({})", tstrs.connect(", "))
     }
 

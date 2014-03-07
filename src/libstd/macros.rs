@@ -377,7 +377,6 @@ macro_rules! vec(
     })
 )
 
-
 /// A macro to select an event from a number of ports.
 ///
 /// This macro is used to wait for the first event to occur on a number of

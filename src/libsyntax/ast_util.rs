@@ -26,9 +26,9 @@ use std::vec_ng::Vec;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    idents.map(|i| {
+    idents.iter().map(|i| {
         token::get_ident(*i).get().to_str()
-    }).connect("::")
+    }).collect::<~[~str]>().connect("::")
 }
 
 // totally scary function: ignores all but the last element, should have

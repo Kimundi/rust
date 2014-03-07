@@ -4853,7 +4853,8 @@ impl Resolver {
                                         path: &Path,
                                         namespace: Namespace)
                                         -> Option<(Def, LastPrivate)> {
-        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
+        let module_path_idents = path.segments.init().iter()
+            .map(|ps| ps.identifier).collect::<~[Ident]>();
 
         let containing_module;
         let last_private;
@@ -4919,7 +4920,8 @@ impl Resolver {
                                    path: &Path,
                                    namespace: Namespace)
                                        -> Option<(Def, LastPrivate)> {
-        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
+        let module_path_idents = path.segments.init().iter()
+            .map(|ps| ps.identifier).collect::<~[Ident]>();
 
         let root_module = self.graph_root.get_module();
 

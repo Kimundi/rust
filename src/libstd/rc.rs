@@ -181,6 +181,13 @@ impl<T> Clone for Weak<T> {
     }
 }
 
+impl<S: ::io::Writer, T: ::hash::Hash<S>> ::hash::Hash<S> for Rc<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.deref().hash(state);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::*;

@@ -26,7 +26,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-uint_module!(u64, i64, 64)
+uint_module!(u64, i64, 64, "u64", write_le_u64)
 
 impl CheckedAdd for u64 {
     #[inline]

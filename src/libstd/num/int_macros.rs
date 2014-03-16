@@ -11,7 +11,7 @@
 #[macro_escape];
 #[doc(hidden)];
 
-macro_rules! int_module (($T:ty, $bits:expr) => (
+macro_rules! int_module (($T:ty, $bits:expr, $suffix:expr, $hash_meth:ident) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
@@ -286,6 +286,12 @@ impl ToStrRadix for $T {
         unsafe { str::raw::from_utf8_owned(buf) }
     }
 }
+
+impl_clone!($T)
+impl_total_eq!($T)
+impl_total_ord!($T)
+impl_repr_literal!($T, $suffix)
+impl_hash_write_delegate!($T, $hash_meth)
 
 #[cfg(test)]
 mod tests {

@@ -84,6 +84,7 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
+// Declare macros first, to make them visible to all of std
 pub mod macros;
 
 mod rtdeps;
@@ -111,8 +112,8 @@ pub mod prelude;
 #[path = "num/u32.rs"]  pub mod u32;
 #[path = "num/u64.rs"]  pub mod u64;
 
-#[path = "num/f32.rs"]   pub mod f32;
-#[path = "num/f64.rs"]   pub mod f64;
+#[path = "num/f32.rs"]  pub mod f32;
+#[path = "num/f64.rs"]  pub mod f64;
 
 pub mod unit;
 pub mod bool;

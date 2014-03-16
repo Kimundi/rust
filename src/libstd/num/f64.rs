@@ -859,6 +859,16 @@ impl num::FromStrRadix for f64 {
     }
 }
 
+impl ::fmt::Show for f64 {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_float(self, f)
+    }
+}
+
+impl_clone!(f64)
+impl_repr_literal!(f64, "f64")
+impl_floating_fmt!(f64)
+
 #[cfg(test)]
 mod tests {
     use f64::*;

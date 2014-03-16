@@ -24,7 +24,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-uint_module!(u8, i8, 8)
+uint_module!(u8, i8, 8, "u8", write_u8)
 
 impl CheckedAdd for u8 {
     #[inline]

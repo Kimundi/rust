@@ -89,6 +89,7 @@ use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
+use fmt::{Show, Formatter};
 use io::Writer;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
@@ -104,6 +105,7 @@ use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use vec_ng::Vec;
 use default::Default;
 use raw::Repr;
+use result::Result;
 
 /*
 Section: Creating a string
@@ -1664,6 +1666,24 @@ impl Mutable for ~str {
     }
 }
 
+impl<'a, T: Str> fmt::String for T {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.pad(self.as_slice())
+    }
+}
+
+impl ::fmt::Show for ~str {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_string(self, f)
+    }
+}
+
+impl<'a> ::fmt::Show for &'a str {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_string(self, f)
+    }
+}
+
 /// Methods for string slices
 pub trait StrSlice<'a> {
     /// Returns true if one string contains another
@@ -3032,6 +3052,29 @@ impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
         self.to_owned()
+    }
+}
+
+impl<'a> Clone for &'a str {
+    /// Return a shallow copy of the slice.
+    #[inline]
+    fn clone(&self) -> &'a str { *self }
+}
+
+#[allow(unused_must_use)]
+impl<'a, S: ::io::Writer> ::hash::Hash<S> for &'a str {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        state.write(self.as_bytes());
+        state.write_u8(0xFF);
+    }
+}
+
+#[allow(unused_must_use)]
+impl<S: ::io::Writer> ::hash::Hash<S> for ~str {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
     }
 }
 

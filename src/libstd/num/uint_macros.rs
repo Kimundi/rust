@@ -11,7 +11,7 @@
 #[macro_escape];
 #[doc(hidden)];
 
-macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (
+macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr, $suffix:expr, $hash_meth:ident) => (
 
 pub static BITS : uint = $bits;
 pub static BYTES : uint = ($bits / 8);
@@ -224,6 +224,12 @@ impl Bitwise for $T {
         (*self as $T_SIGNED).trailing_zeros() as $T
     }
 }
+
+impl_clone!($T)
+impl_total_eq!($T)
+impl_total_ord!($T)
+impl_repr_literal!($T, $suffix)
+impl_hash_write_delegate!($T, $hash_meth)
 
 #[cfg(test)]
 mod tests {

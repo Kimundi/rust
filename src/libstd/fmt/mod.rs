@@ -484,7 +484,6 @@ use container::Container;
 use io::MemWriter;
 use io;
 use iter::{Iterator, range};
-use num::Signed;
 use option::{Option,Some,None};
 use repr;
 use result::{Ok, Err};
@@ -617,7 +616,7 @@ macro_rules! uniform_fn_call_workaround {
             pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
                 x.fmt(fmt)
             }
-            )*
+        )*
     }
 }
 uniform_fn_call_workaround! {
@@ -1053,76 +1052,7 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
     argument(secret_unsigned, s)
 }
 
-// Implementations of the core formatting traits
-
-impl<T: Show> Show for @T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
-}
-impl<T: Show> Show for ~T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
-}
-impl<'a, T: Show> Show for &'a T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
-}
-
-impl Bool for bool {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_string(&(if *self {"true"} else {"false"}), f)
-    }
-}
-
-impl<'a, T: str::Str> String for T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        f.pad(self.as_slice())
-    }
-}
-
-impl Char for char {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        let mut utf8 = [0u8, ..4];
-        let amt = self.encode_utf8(utf8);
-        let s: &str = unsafe { cast::transmute(utf8.slice_to(amt)) };
-        secret_string(&s, f)
-    }
-}
-
-macro_rules! floating(($ty:ident) => {
-    impl Float for $ty {
-        fn fmt(&self, fmt: &mut Formatter) -> Result {
-            // FIXME: this shouldn't perform an allocation
-            let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exact(self.abs(), i),
-                None => ::$ty::to_str_digits(self.abs(), 6)
-            };
-            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
-        }
-    }
-
-    impl LowerExp for $ty {
-        fn fmt(&self, fmt: &mut Formatter) -> Result {
-            // FIXME: this shouldn't perform an allocation
-            let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, false),
-                None => ::$ty::to_str_exp_digits(self.abs(), 6, false)
-            };
-            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
-        }
-    }
-
-    impl UpperExp for $ty {
-        fn fmt(&self, fmt: &mut Formatter) -> Result {
-            // FIXME: this shouldn't perform an allocation
-            let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, true),
-                None => ::$ty::to_str_exp_digits(self.abs(), 6, true)
-            };
-            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
-        }
-    }
-})
-floating!(f32)
-floating!(f64)
-
+// Implement formatting trait for `{:?}` generically here
 impl<T> Poly for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match (f.width, f.precision) {
@@ -1138,51 +1068,6 @@ impl<T> Poly for T {
             }
         }
     }
-}
-
-impl<T> Pointer for *T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        f.flags |= 1 << (parse::FlagAlternate as uint);
-        secret_lower_hex::<uint>(&(*self as uint), f)
-    }
-}
-impl<T> Pointer for *mut T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(*self as *T), f)
-    }
-}
-impl<'a, T> Pointer for &'a T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
-    }
-}
-impl<'a, T> Pointer for &'a mut T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
-    }
-}
-
-// Implementation of Show for various core types
-
-macro_rules! delegate(($ty:ty to $other:ident) => {
-    impl<'a> Show for $ty {
-        fn fmt(&self, f: &mut Formatter) -> Result {
-            (concat_idents!(secret_, $other)(self, f))
-        }
-    }
-})
-delegate!(~str to string)
-delegate!(&'a str to string)
-delegate!(bool to bool)
-delegate!(char to char)
-delegate!(f32 to float)
-delegate!(f64 to float)
-
-impl<T> Show for *T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
-}
-impl<T> Show for *mut T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,

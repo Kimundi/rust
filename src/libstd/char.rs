@@ -509,6 +509,33 @@ impl Default for char {
     fn default() -> char { '\x00' }
 }
 
+impl<S: ::io::Writer> ::hash::Hash<S> for char {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (*self as u32).hash(state);
+    }
+}
+
+impl ::fmt::Char for char {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        use vec::ImmutableVector;
+        let mut utf8 = [0u8, ..4];
+        let amt = self.encode_utf8(utf8);
+        let s: &str = unsafe { ::cast::transmute(utf8.slice_to(amt)) };
+        ::fmt::secret_string(&s, f)
+    }
+}
+
+impl ::fmt::Show for char {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_char(self, f)
+    }
+}
+
+impl_clone!(char)
+impl_total_eq!(char)
+impl_total_ord!(char)
+
 #[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());

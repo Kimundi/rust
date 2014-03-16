@@ -41,6 +41,8 @@ use any::Any;
 use clone::Clone;
 use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
+use hash::Hash;
+use io::Writer;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
 use mem;
@@ -376,6 +378,22 @@ impl<T: Default> Option<T> {
 impl<T> Default for Option<T> {
     #[inline]
     fn default() -> Option<T> { None }
+}
+
+
+impl<S: Writer, T: Hash<S>> Hash<S> for Option<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        match *self {
+            Some(ref x) => {
+                0u8.hash(state);
+                x.hash(state);
+            }
+            None => {
+                1u8.hash(state);
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

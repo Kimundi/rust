@@ -860,6 +860,16 @@ impl num::FromStrRadix for f32 {
     }
 }
 
+impl ::fmt::Show for f32 {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_float(self, f)
+    }
+}
+
+impl_clone!(f32)
+impl_repr_literal!(f32, "f32")
+impl_floating_fmt!(f32)
+
 #[cfg(test)]
 mod tests {
     use f32::*;

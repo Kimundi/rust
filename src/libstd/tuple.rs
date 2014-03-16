@@ -13,6 +13,8 @@
 #[allow(missing_doc)];
 
 use clone::Clone;
+use hash::Hash;
+use io::Writer;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;
 use fmt;
@@ -121,6 +123,13 @@ macro_rules! tuple_impls {
             impl<$($T: fmt::Show),+> fmt::Show for ($($T,)+) {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     write_tuple!(f.buf, $(self.$refN()),+)
+                }
+            }
+
+            impl<S: Writer, $($T: Hash<S>),+> Hash<S> for ($($T,)+) {
+                #[inline]
+                fn hash(&self, state: &mut S) {
+                    $( self.$refN().hash(state); )+
                 }
             }
         )+

@@ -10,6 +10,12 @@
 
 //! Operations on unique pointer types
 
+use clone::Clone;
+use default::Default;
+use hash::Hash;
+use fmt::{Show, Formatter};
+use io::Writer;
+
 #[cfg(not(test))] use cmp::*;
 
 /// A value that represents the global exchange heap. This is the default
@@ -56,4 +62,49 @@ impl<T: TotalOrd> TotalOrd for ~T {
 impl<T: TotalEq> TotalEq for ~T {
     #[inline]
     fn equals(&self, other: &~T) -> bool { (**self).equals(*other) }
+}
+
+impl<T: Clone> Clone for ~T {
+    /// Return a copy of the owned box.
+    #[inline]
+    fn clone(&self) -> ~T { ~(**self).clone() }
+
+    /// Perform copy-assignment from `source` by reusing the existing allocation.
+    fn clone_from(&mut self, source: &~T) {
+        (**self).clone_from(&(**source));
+    }
+}
+
+impl<T: Default> Default for ~T {
+    fn default() -> ~T { ~Default::default() }
+}
+
+impl<S: Writer, T: Hash<S>> Hash<S> for ~T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+
+impl<T: Show> Show for ~T {
+    fn fmt(&self, f: &mut Formatter) -> ::fmt::Result { ::fmt::secret_show(&**self, f) }
+}
+
+#[test]
+fn test_owned_clone() {
+    let a = ~5i;
+    let b: ~int = a.clone();
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_owned_clone_from() {
+    let a = ~5;
+    let mut b = ~10;
+    let b_address: uint = unsafe { ::cast::transmute_copy(&b) };
+    b.clone_from(&a);
+    let b_address_2: uint = unsafe { ::cast::transmute_copy(&b) };
+
+    assert_eq!(b_address, b_address_2);
+    assert_eq!(*b, 5);
 }

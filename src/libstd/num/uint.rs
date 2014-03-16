@@ -24,7 +24,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-uint_module!(uint, int, ::int::BITS)
+uint_module!(uint, int, ::int::BITS, "u", write_le_uint)
 
 #[cfg(target_word_size = "32")]
 impl CheckedAdd for uint {

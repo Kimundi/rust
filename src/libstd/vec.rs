@@ -2948,6 +2948,36 @@ impl<A> Extendable<A> for ~[A] {
     }
 }
 
+impl<'a, T> Clone for &'a [T] {
+    /// Return a shallow copy of the slice.
+    #[inline]
+    fn clone(&self) -> &'a [T] { *self }
+}
+
+impl<'a, S: ::io::Writer, T: ::hash::Hash<S>> ::hash::Hash<S> for &'a [T] {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.len().hash(state);
+        for elt in self.iter() {
+            elt.hash(state);
+        }
+    }
+}
+
+impl<'a, S: ::io::Writer, T: ::hash::Hash<S>> ::hash::Hash<S> for &'a mut [T] {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
+    }
+}
+
+impl<S: ::io::Writer, T: ::hash::Hash<S>> ::hash::Hash<S> for ~[T] {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::*;

@@ -15,11 +15,3 @@ pub trait Default {
     /// Return the "default value" for a type.
     fn default() -> Self;
 }
-
-impl<T: Default + 'static> Default for @T {
-    fn default() -> @T { @Default::default() }
-}
-
-impl<T: Default> Default for ~T {
-    fn default() -> ~T { ~Default::default() }
-}

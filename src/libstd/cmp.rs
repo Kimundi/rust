@@ -50,32 +50,6 @@ pub trait TotalEq: Eq {
     }
 }
 
-macro_rules! totaleq_impl(
-    ($t:ty) => {
-        impl TotalEq for $t {
-            #[inline]
-            fn equals(&self, other: &$t) -> bool { *self == *other }
-        }
-    }
-)
-
-totaleq_impl!(bool)
-
-totaleq_impl!(u8)
-totaleq_impl!(u16)
-totaleq_impl!(u32)
-totaleq_impl!(u64)
-
-totaleq_impl!(i8)
-totaleq_impl!(i16)
-totaleq_impl!(i32)
-totaleq_impl!(i64)
-
-totaleq_impl!(int)
-totaleq_impl!(uint)
-
-totaleq_impl!(char)
-
 #[deriving(Clone, Eq, Show)]
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
@@ -84,12 +58,8 @@ pub trait TotalOrd: TotalEq + Ord {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
-impl TotalEq for Ordering {
-    #[inline]
-    fn equals(&self, other: &Ordering) -> bool {
-        *self == *other
-    }
-}
+impl_total_eq!(Ordering)
+
 impl TotalOrd for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
@@ -101,34 +71,6 @@ impl Ord for Ordering {
     #[inline]
     fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
 }
-
-macro_rules! totalord_impl(
-    ($t:ty) => {
-        impl TotalOrd for $t {
-            #[inline]
-            fn cmp(&self, other: &$t) -> Ordering {
-                if *self < *other { Less }
-                else if *self > *other { Greater }
-                else { Equal }
-            }
-        }
-    }
-)
-
-totalord_impl!(u8)
-totalord_impl!(u16)
-totalord_impl!(u32)
-totalord_impl!(u64)
-
-totalord_impl!(i8)
-totalord_impl!(i16)
-totalord_impl!(i32)
-totalord_impl!(i64)
-
-totalord_impl!(int)
-totalord_impl!(uint)
-
-totalord_impl!(char)
 
 /**
 Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
@@ -192,6 +134,14 @@ mod test {
         assert_eq!(5.cmp(&5), Equal);
         assert_eq!((-5).cmp(&12), Less);
         assert_eq!(12.cmp(-5), Greater);
+    }
+
+    #[test]
+    fn test_cmp2() {
+        assert_eq!(cmp2(1, 2, 3, 4), Less);
+        assert_eq!(cmp2(3, 2, 3, 4), Less);
+        assert_eq!(cmp2(5, 2, 3, 4), Greater);
+        assert_eq!(cmp2(5, 5, 5, 4), Greater);
     }
 
     #[test]

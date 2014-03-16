@@ -25,7 +25,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-int_module!(i64, 64)
+int_module!(i64, 64, "i64", write_le_i64)
 
 impl Bitwise for i64 {
     /// Returns the number of ones in the binary representation of the number.

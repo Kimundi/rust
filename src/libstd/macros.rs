@@ -16,6 +16,10 @@
 
 #[macro_escape];
 
+/////////////////////////////////////////////////////////////////////////////
+// Exported macros
+/////////////////////////////////////////////////////////////////////////////
+
 /// The entry point for failure of rust tasks.
 ///
 /// This macro is used to inject failure into a rust task, causing the task to
@@ -332,3 +336,107 @@ macro_rules! log (
         if log_enabled!($lvl) { println!($($args)*) }
     )
 )
+
+/////////////////////////////////////////////////////////////////////////////
+// Internal, unexported macros
+/////////////////////////////////////////////////////////////////////////////
+
+macro_rules! impl_clone {
+    ($T:ty) => {
+        impl ::std::clone::Clone for $T {
+            /// Return a deep copy of the value.
+            #[inline]
+            fn clone(&self) -> $T { *self }
+        }
+    };
+}
+
+macro_rules! impl_total_eq {
+    ($T:ty) => {
+        #[cfg(not(test))]
+        impl ::cmp::TotalEq for $T {
+            #[inline]
+            fn equals(&self, other: &$T) -> bool { *self == *other }
+        }
+    };
+}
+
+macro_rules! impl_total_ord {
+    ($T:ty) => {
+        #[cfg(not(test))]
+        impl ::cmp::TotalOrd for $T {
+            #[inline]
+            fn cmp(&self, other: &$T) -> ::cmp::Ordering {
+                if *self < *other { ::cmp::Less }
+                else if *self > *other { ::cmp::Greater }
+                else { ::cmp::Equal }
+            }
+        }
+    };
+}
+
+macro_rules! impl_repr_literal {
+    ($T:ty, $suffix:expr) => {
+        impl ::repr::Repr for $T {
+            fn write_repr(&self, writer: &mut ::io::Writer) -> ::io::IoResult<()> {
+                write!(writer, "{}{}", *self, $suffix)
+            }
+        }
+    };
+    ($T:ty) => {
+        impl ::repr::Repr for $T {
+            fn write_repr(&self, writer: &mut ::io::Writer) -> ::io::IoResult<()> {
+                write!(writer, "{}", *self)
+            }
+        }
+    }
+}
+
+macro_rules! impl_hash_write_delegate {
+    ($ty:ty, $method:ident) => {
+        impl<S: ::io::Writer> ::hash::Hash<S> for $ty {
+            #[inline]
+            #[allow(unused_must_use)]
+            fn hash(&self, state: &mut S) {
+                state.$method(*self);
+            }
+        }
+    }
+}
+
+macro_rules! impl_floating_fmt {
+    ($ty:ident) => {
+        impl ::fmt::Float for $ty {
+            fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+                // FIXME: this shouldn't perform an allocation
+                let s = match fmt.precision {
+                    Some(i) => ::$ty::to_str_exact(self.abs(), i),
+                    None => ::$ty::to_str_digits(self.abs(), 6)
+                };
+                fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
+            }
+        }
+
+        impl ::fmt::LowerExp for $ty {
+            fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+                // FIXME: this shouldn't perform an allocation
+                let s = match fmt.precision {
+                    Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, false),
+                    None => ::$ty::to_str_exp_digits(self.abs(), 6, false)
+                };
+                fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
+            }
+        }
+
+        impl ::fmt::UpperExp for $ty {
+            fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+                // FIXME: this shouldn't perform an allocation
+                let s = match fmt.precision {
+                    Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, true),
+                    None => ::$ty::to_str_exp_digits(self.abs(), 6, true)
+                };
+                fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
+            }
+        }
+    }
+}

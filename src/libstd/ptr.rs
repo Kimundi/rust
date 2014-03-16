@@ -14,6 +14,8 @@ use cast;
 use clone::Clone;
 #[cfg(not(test))]
 use cmp::Equiv;
+use hash::Hash;
+use io::Writer;
 use iter::{range, Iterator};
 use mem;
 use option::{Option, Some, None};
@@ -38,6 +40,49 @@ impl<T> Clone for *mut T {
     #[inline]
     fn clone(&self) -> *mut T {
         *self
+    }
+}
+
+impl<S: Writer, T> Hash<S> for *T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        // NB: raw-pointer Hash does _not_ dereference
+        // to the target; it just gives you the pointer-bytes.
+        (*self as uint).hash(state);
+    }
+}
+
+impl<S: Writer, T> Hash<S> for *mut T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        // NB: raw-pointer Hash does _not_ dereference
+        // to the target; it just gives you the pointer-bytes.
+        (*self as uint).hash(state);
+    }
+}
+
+impl<T> ::fmt::Pointer for *T {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        f.flags |= 1 << (::fmt::parse::FlagAlternate as uint);
+        ::fmt::secret_lower_hex::<uint>(&(*self as uint), f)
+    }
+}
+
+impl<T> ::fmt::Pointer for *mut T {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_pointer::<*T>(&(*self as *T), f)
+    }
+}
+
+impl<T> ::fmt::Show for *T {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_pointer(self, f)
+    }
+}
+
+impl<T> ::fmt::Show for *mut T {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_pointer(self, f)
     }
 }
 

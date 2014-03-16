@@ -195,6 +195,29 @@ impl Default for bool {
     fn default() -> bool { false }
 }
 
+impl<S: ::io::Writer> ::hash::Hash<S> for bool {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (*self as u8).hash(state);
+    }
+}
+
+impl ::fmt::Bool for bool {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_string(&(if *self {"true"} else {"false"}), f)
+    }
+}
+
+impl ::fmt::Show for bool {
+    fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        ::fmt::secret_bool(self, f)
+    }
+}
+
+impl_clone!(bool)
+impl_total_eq!(bool)
+impl_repr_literal!(bool)
+
 #[cfg(test)]
 mod tests {
     use prelude::*;

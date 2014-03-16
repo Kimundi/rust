@@ -10,6 +10,12 @@
 
 //! Operations on managed box types
 
+use clone::Clone;
+use default::Default;
+use fmt::{Show, Formatter};
+use hash::Hash;
+use io::Writer;
+
 #[cfg(not(test))] use cmp::*;
 
 /// Returns the refcount of a shared box (as just before calling this)
@@ -57,6 +63,27 @@ impl<T: TotalEq> TotalEq for @T {
     fn equals(&self, other: &@T) -> bool { (**self).equals(*other) }
 }
 
+impl<T> Clone for @T {
+    /// Return a shallow copy of the managed box.
+    #[inline]
+    fn clone(&self) -> @T { *self }
+}
+
+impl<T: Default + 'static> Default for @T {
+    fn default() -> @T { @Default::default() }
+}
+
+impl<S: Writer, T: Hash<S>> Hash<S> for @T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+
+impl<T: Show> Show for @T {
+    fn fmt(&self, f: &mut Formatter) -> ::fmt::Result { ::fmt::secret_show(&**self, f) }
+}
+
 #[test]
 fn test() {
     let x = @3;
@@ -76,4 +103,11 @@ fn refcount_test() {
     let y = x.clone();
     assert_eq!(refcount(x), 2);
     assert_eq!(refcount(y), 2);
+}
+
+#[test]
+fn test_managed_clone() {
+    let a = @5i;
+    let b: @int = a.clone();
+    assert_eq!(a, b);
 }

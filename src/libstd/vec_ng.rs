@@ -19,6 +19,8 @@ use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
+use hash::Hash;
+use io::Writer;
 use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, Rev};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
@@ -211,6 +213,13 @@ impl<T> Container for Vec<T> {
     #[inline]
     fn len(&self) -> uint {
         self.len
+    }
+}
+
+impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
     }
 }
 

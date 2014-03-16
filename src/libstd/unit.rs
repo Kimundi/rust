@@ -53,3 +53,14 @@ impl fmt::Show for () {
         f.pad("()")
     }
 }
+
+#[allow(unused_must_use)]
+impl<S: ::io::Writer> ::hash::Hash<S> for () {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        state.write([]);
+    }
+}
+
+impl_clone!(())
+impl_repr_literal!(())

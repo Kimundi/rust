@@ -23,7 +23,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-int_module!(i8, 8)
+int_module!(i8, 8, "i8", write_i8)
 
 impl Bitwise for i8 {
     /// Returns the number of ones in the binary representation of the number.

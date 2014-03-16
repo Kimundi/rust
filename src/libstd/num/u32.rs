@@ -24,7 +24,7 @@ use option::{Option, Some, None};
 use str;
 use intrinsics;
 
-uint_module!(u32, i32, 32)
+uint_module!(u32, i32, 32, "u32", write_le_u32)
 
 impl CheckedAdd for u32 {
     #[inline]

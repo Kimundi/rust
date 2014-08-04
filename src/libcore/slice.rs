@@ -287,10 +287,7 @@ impl<'a,T> ImmutableSlice<'a, T> for &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(start as int),
-                    len: (end - start)
-                })
+            raw::slice_unchecked(*self, start, end)
         }
     }
 
@@ -700,10 +697,7 @@ impl<'a,T> MutableSlice<'a, T> for &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            transmute(RawSlice {
-                    data: self.as_mut_ptr().offset(start as int) as *const T,
-                    len: (end - start)
-                })
+            raw::mut_slice_unchecked(self, start, end)
         }
     }
 
@@ -1526,6 +1520,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// Unsafe operations
 #[experimental = "needs review"]
 pub mod raw {
+    use super::{ImmutableSlice, MutableSlice};
     use mem::transmute;
     use ptr::RawPtr;
     use raw::Slice;
@@ -1566,7 +1561,7 @@ pub mod raw {
      * slice so it no longer contains that element. Returns None
      * if the slice is empty. O(1).
      */
-     #[inline]
+    #[inline]
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let head: *const T = slice.data;
@@ -1580,12 +1575,34 @@ pub mod raw {
      * slice so it no longer contains that element. Returns None
      * if the slice is empty. O(1).
      */
-     #[inline]
+    #[inline]
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
         let tail: *const T = slice.data.offset((slice.len - 1) as int);
         slice.len -= 1;
         Some(tail)
+    }
+
+    /// Create a slice without doing any bound checking
+    #[inline]
+    pub unsafe fn slice_unchecked<'a, T>(slice: &'a [T],
+                                         start: uint,
+                                         end: uint) -> &'a [T] {
+        transmute(Slice {
+            data: slice.as_ptr().offset(start as int),
+            len: (end - start)
+        })
+    }
+
+    /// Create a mutable slice without doing any bound checking
+    #[inline]
+    pub unsafe fn mut_slice_unchecked<'a, T>(slice: &'a mut [T],
+                                             start: uint,
+                                             end: uint) -> &'a mut [T] {
+        transmute(Slice {
+            data: slice.as_mut_ptr().offset(start as int) as *const T,
+            len: (end - start)
+        })
     }
 }
 

@@ -22,15 +22,14 @@ use core::cmp;
 use core::collections::Collection;
 use core::iter::{Filter, AdditiveIterator, Iterator, DoubleEndedIterator};
 use core::option::{Option, None, Some};
-use core::str::{CharSplits, StrSlice};
+use core::str::{StrSlice, Splits, CharFnMatcher};
 use u_char;
 use u_char::UnicodeChar;
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
 pub type Words<'a> =
-    Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
-
+    Filter<'a, &'a str, Splits<CharFnMatcher<'a>>>;
 /// Methods for Unicode string slices
 pub trait UnicodeStrSlice<'a> {
     /// Returns an iterator over the
@@ -155,17 +154,17 @@ impl<'a> UnicodeStrSlice<'a> for &'a str {
 
     #[inline]
     fn trim(&self) -> &'a str {
-        self.trim_left().trim_right()
+        self.trim_matches(u_char::is_whitespace)
     }
 
     #[inline]
     fn trim_left(&self) -> &'a str {
-        self.trim_left_chars(u_char::is_whitespace)
+        self.trim_left_matches(u_char::is_whitespace)
     }
 
     #[inline]
     fn trim_right(&self) -> &'a str {
-        self.trim_right_chars(u_char::is_whitespace)
+        self.trim_right_matches(u_char::is_whitespace)
     }
 }
 

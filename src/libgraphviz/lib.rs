@@ -446,7 +446,7 @@ impl<'a> LabelText<'a> {
     fn pre_escaped_content(self) -> str::MaybeOwned<'a> {
         match self {
             EscStr(s) => s,
-            LabelStr(s) => if s.as_slice().contains_char('\\') {
+            LabelStr(s) => if s.as_slice().contains('\\') {
                 str::Owned(s.as_slice().escape_default())
             } else {
                 s

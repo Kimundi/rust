@@ -20,19 +20,128 @@ use mem;
 use char;
 use char::Char;
 use clone::Clone;
-use cmp;
 use cmp::{PartialEq, Eq};
 use collections::Collection;
 use default::Default;
 use iter::{Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
-use iter::range;
 use num::{CheckedMul, Saturating};
 use option::{Option, None, Some};
 use raw::Repr;
 use slice::{ImmutableSlice, MutableSlice};
 use slice;
-use uint;
+
+pub use self::matches::{Matches, MatchIndices};
+pub use self::matches::{RMatches, RMatchIndices};
+pub use self::splits::{Splits, NSplits, RNSplits, TermSplits};
+pub use self::splits::{RSplits, RTermSplits};
+pub use self::pattern::CharMatcher;
+pub use self::pattern::StrMatcher;
+pub use self::pattern::CharFnMatcher;
+pub use self::pattern::CharSliceMatcher;
+pub use self::pattern::CharClosureMatcher;
+pub use self::pattern::CharEqMatcher;
+pub use self::pattern::CharEqPattern;
+pub use self::searcher::Searcher;
+
+mod searcher;
+
+// Implementations for `Pattern` and `Matcher`
+mod pattern;
+
+// StrSlice support implementations
+mod matches;
+mod splits;
+
+/// A trait identifying `Self` as a pattern that can be used
+/// for searching in a string.
+pub trait Pattern<'a, M> {
+    /// This constructs the actual pattern matcher
+    /// from `Self` and the string to search in.
+    fn into_matcher(self, &'a str) -> M;
+
+    /// Check if the given string contains this pattern
+    fn is_contained_in(self, s: &str) -> bool;
+}
+
+/// A pattern matcher over a string slice.
+pub trait Matcher<'a> {
+    /// Returns the original string to search in
+    fn get_haystack(&self) -> &'a str;
+}
+
+/// A matcher for a string pattern that can
+/// be used to search from left to the right in a string.
+pub trait LeftMatcher<'a>: Matcher<'a> {
+    /// Returns the next match from the left,
+    /// or `None` to signal there is none.
+    fn next_match(&mut self) -> Option<(uint, &'a str)>;
+}
+
+/// A matcher for a string pattern that can
+/// be used to search from right to the left in a string.
+pub trait RightMatcher<'a>: Matcher<'a> {
+    /// Returns the next match from the right,
+    /// or `None` to signal there is none.
+    fn next_match_back(&mut self) -> Option<(uint, &'a str)>;
+}
+
+/// A marker trait that signifies that both `LeftMatcher`
+/// and `RightMatcher` produce the same results,
+/// just in reverse order.
+///
+/// For example, matchers than can look for the
+/// pattern `"aa"` must not implement this trait,
+/// because a haystack like `"aaa"` could be matched
+/// as either `"[aa]a"` or `"a[aa]"` depending on direction.
+pub trait DoubleEndedMatcher<'a>: LeftMatcher<'a> + RightMatcher<'a> {}
+
+/// A `char` encoded in UTF8.
+///
+/// Allows taking a slice into it
+pub struct Utf8Char {
+    buf: [u8, ..4]
+}
+
+impl Clone for Utf8Char {
+    #[inline]
+    fn clone(&self) -> Utf8Char { *self }
+}
+
+impl Utf8Char {
+    /// Create a `Utf8Char` from a `char`
+    #[inline]
+    pub fn new(c: char) -> Utf8Char {
+        let mut buf = [0, ..4];
+        c.encode_utf8(buf.as_mut_slice());
+        Utf8Char { buf: buf }
+    }
+
+    #[inline]
+    fn first_byte(self) -> u8 {
+        let (b, _, _, _): (u8, u8, u8, u8) = unsafe {
+            mem::transmute(self.buf)
+        };
+        b
+    }
+}
+
+impl Str for Utf8Char {
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        unsafe {
+            let s = raw::from_utf8(self.buf);
+            raw::slice_unchecked(s, 0, self.len())
+        }
+    }
+}
+
+impl Collection for Utf8Char {
+    #[inline]
+    fn len(&self) -> uint {
+        utf8_char_width(self.first_byte())
+    }
+}
 
 /*
 Section: Creating a string
@@ -44,12 +153,16 @@ Section: Creating a string
 /// returned as a '&str' instead of a '&[u8]'
 ///
 /// Returns None if the slice is not utf-8.
+#[inline]
 pub fn from_utf8<'a>(v: &'a [u8]) -> Option<&'a str> {
     if is_utf8(v) {
         Some(unsafe { raw::from_utf8(v) })
     } else { None }
 }
 
+// NOTE: Once all deprecated methods that depend on it are
+// removed, this can become a private implementation detail
+// for the `matcher` module
 /// Something that can be used to compare against a character
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
@@ -256,376 +369,22 @@ pub type Bytes<'a> =
     Map<'a, &'a u8, u8, slice::Items<'a, u8>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
-#[deriving(Clone)]
-pub struct CharSplits<'a, Sep> {
-    /// The slice remaining to be iterated
-    string: &'a str,
-    sep: Sep,
-    /// Whether an empty string at the end is allowed
-    allow_trailing_empty: bool,
-    only_ascii: bool,
-    finished: bool,
-}
+#[deprecated = "Replaced by the more generic `Splits`"]
+pub type CharSplits<'a, Sep> = Splits<CharEqMatcher<'a, Sep>>;
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
-#[deriving(Clone)]
-pub struct CharSplitsN<'a, Sep> {
-    iter: CharSplits<'a, Sep>,
-    /// The number of splits remaining
-    count: uint,
-    invert: bool,
-}
+#[deprecated = "Replaced by the more generic `NSplits` or `RNSplits`"]
+pub type CharSplitsN<'a, Sep> = NSplits<CharEqMatcher<'a, Sep>>;
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
 pub type AnyLines<'a> =
-    Map<'a, &'a str, &'a str, CharSplits<'a, char>>;
-
-impl<'a, Sep> CharSplits<'a, Sep> {
-    #[inline]
-    fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_trailing_empty || self.string.len() > 0) {
-            self.finished = true;
-            Some(self.string)
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplits<'a, Sep> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.finished { return None }
-
-        let mut next_split = None;
-        if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate() {
-                if self.sep.matches(byte as char) && byte < 128u8 {
-                    next_split = Some((idx, idx + 1));
-                    break;
-                }
-            }
-        } else {
-            for (idx, ch) in self.string.char_indices() {
-                if self.sep.matches(ch) {
-                    next_split = Some((idx, self.string.char_range_at(idx).next));
-                    break;
-                }
-            }
-        }
-        match next_split {
-            Some((a, b)) => unsafe {
-                let elt = raw::slice_unchecked(self.string, 0, a);
-                self.string = raw::slice_unchecked(self.string, b, self.string.len());
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
-    }
-}
-
-impl<'a, Sep: CharEq> DoubleEndedIterator<&'a str>
-for CharSplits<'a, Sep> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        if self.finished { return None }
-
-        if !self.allow_trailing_empty {
-            self.allow_trailing_empty = true;
-            match self.next_back() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => if self.finished { return None }
-            }
-        }
-        let len = self.string.len();
-        let mut next_split = None;
-
-        if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate().rev() {
-                if self.sep.matches(byte as char) && byte < 128u8 {
-                    next_split = Some((idx, idx + 1));
-                    break;
-                }
-            }
-        } else {
-            for (idx, ch) in self.string.char_indices().rev() {
-                if self.sep.matches(ch) {
-                    next_split = Some((idx, self.string.char_range_at(idx).next));
-                    break;
-                }
-            }
-        }
-        match next_split {
-            Some((a, b)) => unsafe {
-                let elt = raw::slice_unchecked(self.string, b, len);
-                self.string = raw::slice_unchecked(self.string, 0, a);
-                Some(elt)
-            },
-            None => { self.finished = true; Some(self.string) }
-        }
-    }
-}
-
-impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitsN<'a, Sep> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.count != 0 {
-            self.count -= 1;
-            if self.invert { self.iter.next_back() } else { self.iter.next() }
-        } else {
-            self.iter.get_end()
-        }
-    }
-}
-
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using naive search
-#[deriving(Clone)]
-struct NaiveSearcher {
-    position: uint
-}
-
-impl NaiveSearcher {
-    fn new() -> NaiveSearcher {
-        NaiveSearcher { position: 0 }
-    }
-
-    fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
-        while self.position + needle.len() <= haystack.len() {
-            if haystack.slice(self.position, self.position + needle.len()) == needle {
-                let matchPos = self.position;
-                self.position += needle.len(); // add 1 for all matches
-                return Some((matchPos, matchPos + needle.len()));
-            } else {
-                self.position += 1;
-            }
-        }
-        None
-    }
-}
-
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using two-way search
-#[deriving(Clone)]
-struct TwoWaySearcher {
-    // constants
-    critPos: uint,
-    period: uint,
-    byteset: u64,
-
-    // variables
-    position: uint,
-    memory: uint
-}
-
-impl TwoWaySearcher {
-    fn new(needle: &[u8]) -> TwoWaySearcher {
-        let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
-        let (critPos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
-
-        let critPos;
-        let period;
-        if critPos1 > critPos2 {
-            critPos = critPos1;
-            period = period1;
-        } else {
-            critPos = critPos2;
-            period = period2;
-        }
-
-        let byteset = needle.iter()
-                            .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
-
-        if needle.slice_to(critPos) == needle.slice_from(needle.len() - critPos) {
-            TwoWaySearcher {
-                critPos: critPos,
-                period: period,
-                byteset: byteset,
-
-                position: 0,
-                memory: 0
-            }
-        } else {
-            TwoWaySearcher {
-                critPos: critPos,
-                period: cmp::max(critPos, needle.len() - critPos) + 1,
-                byteset: byteset,
-
-                position: 0,
-                memory: uint::MAX // Dummy value to signify that the period is long
-            }
-        }
-    }
-
-    #[inline]
-    fn next(&mut self, haystack: &[u8], needle: &[u8], longPeriod: bool) -> Option<(uint, uint)> {
-        'search: loop {
-            // Check that we have room to search in
-            if self.position + needle.len() > haystack.len() {
-                return None;
-            }
-
-            // Quickly skip by large portions unrelated to our substring
-            if (self.byteset >>
-                    ((haystack[self.position + needle.len() - 1] & 0x3f)
-                     as uint)) & 1 == 0 {
-                self.position += needle.len();
-                continue 'search;
-            }
-
-            // See if the right part of the needle matches
-            let start = if longPeriod { self.critPos } else { cmp::max(self.critPos, self.memory) };
-            for i in range(start, needle.len()) {
-                if needle[i] != haystack[self.position + i] {
-                    self.position += i - self.critPos + 1;
-                    if !longPeriod {
-                        self.memory = 0;
-                    }
-                    continue 'search;
-                }
-            }
-
-            // See if the left part of the needle matches
-            let start = if longPeriod { 0 } else { self.memory };
-            for i in range(start, self.critPos).rev() {
-                if needle[i] != haystack[self.position + i] {
-                    self.position += self.period;
-                    if !longPeriod {
-                        self.memory = needle.len() - self.period;
-                    }
-                    continue 'search;
-                }
-            }
-
-            // We have found a match!
-            let matchPos = self.position;
-            self.position += needle.len(); // add self.period for all matches
-            if !longPeriod {
-                self.memory = 0; // set to needle.len() - self.period for all matches
-            }
-            return Some((matchPos, matchPos + needle.len()));
-        }
-    }
-
-    #[inline]
-    fn maximal_suffix(arr: &[u8], reversed: bool) -> (uint, uint) {
-        let mut left = -1; // Corresponds to i in the paper
-        let mut right = 0; // Corresponds to j in the paper
-        let mut offset = 1; // Corresponds to k in the paper
-        let mut period = 1; // Corresponds to p in the paper
-
-        while right + offset < arr.len() {
-            let a;
-            let b;
-            if reversed {
-                a = arr[left + offset];
-                b = arr[right + offset];
-            } else {
-                a = arr[right + offset];
-                b = arr[left + offset];
-            }
-            if a < b {
-                // Suffix is smaller, period is entire prefix so far.
-                right += offset;
-                offset = 1;
-                period = right - left;
-            } else if a == b {
-                // Advance through repetition of the current period.
-                if offset == period {
-                    right += offset;
-                    offset = 1;
-                } else {
-                    offset += 1;
-                }
-            } else {
-                // Suffix is larger, start over from current location.
-                left = right;
-                right += 1;
-                offset = 1;
-                period = 1;
-            }
-        }
-        (left + 1, period)
-    }
-}
-
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using a dynamically chosen search algorithm
-#[deriving(Clone)]
-enum Searcher {
-    Naive(NaiveSearcher),
-    TwoWay(TwoWaySearcher),
-    TwoWayLong(TwoWaySearcher)
-}
-
-impl Searcher {
-    fn new(haystack: &[u8], needle: &[u8]) -> Searcher {
-        // FIXME: Tune this.
-        if needle.len() > haystack.len() - 20 {
-            Naive(NaiveSearcher::new())
-        } else {
-            let searcher = TwoWaySearcher::new(needle);
-            if searcher.memory == uint::MAX { // If the period is long
-                TwoWayLong(searcher)
-            } else {
-                TwoWay(searcher)
-            }
-        }
-    }
-}
-
-/// An iterator over the start and end indices of the matches of a
-/// substring within a larger string
-#[deriving(Clone)]
-pub struct MatchIndices<'a> {
-    // constants
-    haystack: &'a str,
-    needle: &'a str,
-    searcher: Searcher
-}
+    Map<'a, &'a str, &'a str, TermSplits<CharMatcher<'a>>>;
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
-#[deriving(Clone)]
-pub struct StrSplits<'a> {
-    it: MatchIndices<'a>,
-    last_end: uint,
-    finished: bool
-}
-
-impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
-    #[inline]
-    fn next(&mut self) -> Option<(uint, uint)> {
-        match self.searcher {
-            Naive(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes()),
-            TwoWay(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), false),
-            TwoWayLong(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), true)
-        }
-    }
-}
-
-impl<'a> Iterator<&'a str> for StrSplits<'a> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.finished { return None; }
-
-        match self.it.next() {
-            Some((from, to)) => {
-                let ret = Some(self.it.haystack.slice(self.last_end, from));
-                self.last_end = to;
-                ret
-            }
-            None => {
-                self.finished = true;
-                Some(self.it.haystack.slice(self.last_end, self.it.haystack.len()))
-            }
-        }
-    }
-}
+#[deprecated = "Replaced by the more generic `Splits`"]
+pub type StrSplits<'a> = Splits<StrMatcher<'a, 'a>>;
 
 /// External iterator for a string's UTF16 codeunits.
 /// Use with the `std::iter` module.
@@ -969,6 +728,7 @@ pub mod raw {
 
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8.
+    #[inline]
     pub unsafe fn from_utf8<'a>(v: &'a [u8]) -> &'a str {
         mem::transmute(v)
     }
@@ -1089,19 +849,18 @@ impl<'a> Collection for &'a str {
 
 /// Methods for string slices
 pub trait StrSlice<'a> {
-    /// Returns true if one string contains another
+    /// Returns true if a string contains a pattern.
     ///
     /// # Arguments
     ///
-    /// - needle - The string to look for
-    fn contains<'a>(&self, needle: &'a str) -> bool;
+    /// - needle - The pattern to look for
+    fn contains<M, P: Pattern<'a, M>>(self, pat: P) -> bool;
 
-    /// Returns true if a string contains a char.
-    ///
-    /// # Arguments
-    ///
-    /// - needle - The char to look for
-    fn contains_char(&self, needle: char) -> bool;
+    #[deprecated = "Use the generic `.contains()`"]
+    /// Deprecated
+    fn contains_char(self, needle: char) -> bool {
+        self.contains(needle)
+    }
 
     /// An iterator over the characters of `self`. Note, this iterates
     /// over unicode code-points, not unicode graphemes.
@@ -1120,8 +879,8 @@ pub trait StrSlice<'a> {
     /// An iterator over the characters of `self` and their byte offsets.
     fn char_indices(&self) -> CharOffsets<'a>;
 
-    /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`.
+    /// An iterator over substrings of `self`, separated by
+    /// matches of `pat` from the front.
     ///
     /// # Example
     ///
@@ -1129,7 +888,8 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".split(f).collect();
     /// assert_eq!(v, vec!["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
@@ -1138,10 +898,31 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
+    fn split<M, P: Pattern<'a, M>>(self, pat: P) -> Splits<M>;
+
+    /// An iterator over substrings of `self`, separated by
+    /// matches of `pat` from the back.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
+    /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit(f).collect();
+    /// assert_eq!(v, vec!["ghi", "def", "abc"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplit('X').collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
+    ///
+    /// let v: Vec<&str> = "".rsplit('X').collect();
+    /// assert_eq!(v, vec![""]);
+    /// ```
+    fn rsplit<M, P: Pattern<'a, M>>(self, pat: P) -> RSplits<M>;
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, restricted to splitting at most `count`
+    /// matched by `pat`, restricted to splitting at most `count`
     /// times.
     ///
     /// # Example
@@ -1150,7 +931,8 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
     /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_digit()).collect();
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, f).collect();
     /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
@@ -1162,10 +944,29 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
+    fn splitn<M, P: Pattern<'a, M>>(self, n: uint, pat: P) -> NSplits<M>;
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`.
+    /// matched by `pat`, starting from the end of the string.
+    /// Restricted to splitting at most `count` times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
+    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
+    ///
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, f).collect();
+    /// assert_eq!(v, vec!["ghi", "abc1def"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// ```
+    fn rsplitn<M, P: Pattern<'a, M>>(self, n: uint, pat: P) -> RNSplits<M>;
+
+    /// An iterator over substrings of `self`, separated by
+    /// matches of `pat` from the front.
     ///
     /// Equivalent to `split`, except that the trailing substring
     /// is skipped if empty (terminator semantics).
@@ -1182,66 +983,126 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
     /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).rev().collect();
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".split(f).rev().collect();
     /// assert_eq!(v, vec!["ghi", "def", "abc"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
+    fn split_terminator<M, P: Pattern<'a, M>>(self, pat: P) -> TermSplits<M>;
 
-    /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, starting from the end of the string.
-    /// Restricted to splitting at most `count` times.
+    /// An iterator over substrings of `self`, separated by
+    /// matches of `pat` from the back.
+    ///
+    /// Equivalent to `split`, except that the trailing substring
+    /// is skipped if empty (terminator semantics).
     ///
     /// # Example
     ///
     /// ```rust
-    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
-    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
+    /// let v: Vec<&str> = "A.B.".rsplit_terminator('.').collect();
+    /// assert_eq!(v, vec!["B", "A"]);
     ///
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_digit()).collect();
-    /// assert_eq!(v, vec!["ghi", "abc1def"]);
+    /// let v: Vec<&str> = "A..B..".rsplit_terminator('.').collect();
+    /// assert_eq!(v, vec!["", "B", "", "A"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
-    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit_terminator(' ').collect();
+    /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let f = |c: char| c.is_digit();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit_terminator(f).collect();
+    /// assert_eq!(v, vec!["ghi", "def", "abc"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplit_terminator('X').collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
+    ///
+    /// let v: Vec<&str> = "".rsplit_terminator('X').collect();
+    /// assert_eq!(v, vec![]);
     /// ```
-    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
+    fn rsplit_terminator<M, P: Pattern<'a, M>>(self, pat: P) -> RTermSplits<M>;
 
-    /// An iterator over the start and end indices of the disjoint
-    /// matches of `sep` within `self`.
-    ///
-    /// That is, each returned value `(start, end)` satisfies
-    /// `self.slice(start, end) == sep`. For matches of `sep` within
-    /// `self` that overlap, only the indices corresponding to the
-    /// first match are returned.
+    /// An iterator over the slices of the non-overlapping
+    /// matches of `pat` within `self` from the front.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let v: Vec<(uint, uint)> = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, vec![(0,3), (6,9), (12,15)]);
+    /// use std::char;
     ///
-    /// let v: Vec<(uint, uint)> = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, vec![(1,4), (4,7)]);
+    /// let v: Vec<&str> = "abcXabcYabc".matches(char::is_uppercase).collect();
+    /// assert_eq!(v, vec!["X", "Y"]);
     ///
-    /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
-    /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
+    /// let v: Vec<&str> = "1abcabc2".matches(&['1', '2']).collect();
+    /// assert_eq!(v, vec!["1", "2"]);
+    ///
+    /// let v: Vec<&str> = "ababa".matches("aba").collect();
+    /// assert_eq!(v, vec!["aba"]);
     /// ```
-    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a>;
+    fn matches<M, P: Pattern<'a, M>>(self, pat: P) -> Matches<M>;
 
-    /// An iterator over the substrings of `self` separated by `sep`.
+    /// An iterator over the slices of the non-overlapping
+    /// matches of `pat` within `self` from the back.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
-    /// assert_eq!(v, vec!["", "XXX", "YYY", ""]);
+    /// use std::char;
     ///
-    /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
-    /// assert_eq!(v, vec!["1", "", "2"]);
+    /// let v: Vec<&str> = "abcXabcYabc".rmatches(char::is_uppercase).collect();
+    /// assert_eq!(v, vec!["Y", "X"]);
+    ///
+    /// let v: Vec<&str> = "1abcabc2".rmatches(&['1', '2']).collect();
+    /// assert_eq!(v, vec!["2", "1"]);
+    ///
+    /// let v: Vec<&str> = "ababa".rmatches("aba").collect();
+    /// assert_eq!(v, vec!["aba"]);
     /// ```
-    fn split_str(&self, &'a str) -> StrSplits<'a>;
+    fn rmatches<M, P: Pattern<'a, M>>(self, pat: P) -> RMatches<M>;
+
+    /// An iterator over the slices and byte offsets of the non-overlapping
+    /// matches of `pat` within `self` from the front.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::char;
+    ///
+    /// let v: Vec<(uint, &str)> = "abcXabcYabc".match_indices(char::is_uppercase).collect();
+    /// assert_eq!(v, vec![(3, "X"), (7, "Y")]);
+    ///
+    /// let v: Vec<(uint, &str)> = "1abcabc2".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(1, "abc"), (4, "abc")]);
+    ///
+    /// let v: Vec<(uint, &str)> = "ababa".match_indices("aba").collect();
+    /// assert_eq!(v, vec![(0, "aba")]); // only the first `aba`
+    /// ```
+    fn match_indices<M, P: Pattern<'a, M>>(self, pat: P) -> MatchIndices<M>;
+
+    /// An iterator over the slices and byte offsets of the non-overlapping
+    /// matches of `pat` within `self` from the back.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::char;
+    ///
+    /// let v: Vec<(uint, &str)> = "abcXabcYabc".rmatch_indices(char::is_uppercase).collect();
+    /// assert_eq!(v, vec![(7, "Y"), (3, "X")]);
+    ///
+    /// let v: Vec<(uint, &str)> = "1abcabc2".rmatch_indices("abc").collect();
+    /// assert_eq!(v, vec![(4, "abc"), (1, "abc")]);
+    ///
+    /// let v: Vec<(uint, &str)> = "ababa".rmatch_indices("aba").collect();
+    /// assert_eq!(v, vec![(2, "aba")]); // only the last `aba`
+    /// ```
+    fn rmatch_indices<M, P: Pattern<'a, M>>(self, pat: P) -> RMatchIndices<M>;
+
+    #[deprecated = "Use the generic .split()"]
+    /// Deprecated
+    fn split_str<'b>(self, s: &'b str) -> Splits<StrMatcher<'a, 'b>> {
+        self.split(s)
+    }
 
     /// An iterator over the lines of a string (subsequences separated
     /// by `\n`). This does not include the empty string after a
@@ -1254,7 +1115,7 @@ pub trait StrSlice<'a> {
     /// let v: Vec<&str> = four_lines.lines().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    fn lines(&self) -> CharSplits<'a, char>;
+    fn lines(&self) -> TermSplits<CharMatcher<'a>>;
 
     /// An iterator over the lines of a string, separated by either
     /// `\n` or `\r\n`. As with `.lines()`, this does not include an
@@ -1380,56 +1241,68 @@ pub trait StrSlice<'a> {
     /// ```
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str;
 
-    /// Returns true if `needle` is a prefix of the string.
-    fn starts_with(&self, needle: &str) -> bool;
+    /// Returns true if `pat` matches a prefix of the string.
+    fn starts_with<M: LeftMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> bool;
 
-    /// Returns true if `needle` is a suffix of the string.
-    fn ends_with(&self, needle: &str) -> bool;
+    /// Returns true if `pat` matches a suffix of the string.
+    fn ends_with<M: RightMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> bool;
 
-    /// Returns a string with characters that match `to_trim` removed.
-    ///
-    /// # Arguments
-    ///
-    /// * to_trim - a character matcher
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
-    /// assert_eq!("12foo1bar12".trim_chars(&['1', '2']), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar")
-    /// ```
+    #[deprecated = "Use the generic .trim_matches()"]
+    /// Deprecated
     fn trim_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
-    /// Returns a string with leading `chars_to_trim` removed.
-    ///
-    /// # Arguments
-    ///
-    /// * to_trim - a character matcher
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
-    /// assert_eq!("12foo1bar12".trim_left_chars(&['1', '2']), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123")
-    /// ```
+    #[deprecated = "Use the generic .trim_left_matches()"]
+    /// Deprecated
     fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
-    /// Returns a string with trailing `chars_to_trim` removed.
+    #[deprecated = "Use the generic .trim_right_matches()"]
+    /// Deprecated
+    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
+
+    /// Returns a string with pre- and suffixes that match `pat` removed.
     ///
     /// # Arguments
     ///
-    /// * to_trim - a character matcher
+    /// * pat - a string matcher
     ///
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
-    /// assert_eq!("12foo1bar12".trim_right_chars(&['1', '2']), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar")
+    /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar")
+    /// assert_eq!("12foo1bar12".trim_matches(&['1', '2']), "foo1bar")
+    /// assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_digit()), "foo1bar")
     /// ```
-    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
+    fn trim_matches<M: DoubleEndedMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str;
+
+    /// Returns a string with prefixes that match `pat` removed.
+    ///
+    /// # Arguments
+    ///
+    /// * pat - a string matcher
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11")
+    /// assert_eq!("12foo1bar12".trim_left_matches(&['1', '2']), "foo1bar12")
+    /// assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_digit()), "foo1bar123")
+    /// ```
+    fn trim_left_matches<M: LeftMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str;
+
+    /// Returns a string with suffixes that match `pat` removed.
+    ///
+    /// # Arguments
+    ///
+    /// * pat - a string matcher
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar")
+    /// assert_eq!("12foo1bar12".trim_right_matches(&['1', '2']), "12foo1bar")
+    /// assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_digit()), "123foo1bar")
+    /// ```
+    fn trim_right_matches<M: RightMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str;
 
     /// Check that `index`-th byte lies at the start and/or end of a
     /// UTF-8 code point sequence.
@@ -1542,12 +1415,12 @@ pub trait StrSlice<'a> {
     /// Work with the byte buffer of a string as a byte slice.
     fn as_bytes(&self) -> &'a [u8];
 
-    /// Returns the byte index of the first character of `self` that
-    /// matches `search`.
+    /// Returns the byte index of the first match of `self` that
+    /// matches `pat`.
     ///
     /// # Return value
     ///
-    /// `Some` containing the byte index of the last matching character
+    /// `Some` containing the byte index of the first matching pattern
     /// or `None` if there is no match
     ///
     /// # Example
@@ -1557,6 +1430,7 @@ pub trait StrSlice<'a> {
     ///
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
+    /// assert_eq!(s.find("老虎 L"), Some(6));
     ///
     /// // the first space
     /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
@@ -1564,14 +1438,17 @@ pub trait StrSlice<'a> {
     /// // neither are found
     /// assert_eq!(s.find(&['1', '2']), None);
     /// ```
-    fn find<C: CharEq>(&self, search: C) -> Option<uint>;
+    #[inline]
+    fn find<M: LeftMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> Option<uint> {
+        self.match_indices(pat).next().map(|(a, _)| a)
+    }
 
-    /// Returns the byte index of the last character of `self` that
-    /// matches `search`.
+    /// Returns the byte index of the last match of `self` that
+    /// matches `pat`.
     ///
     /// # Return value
     ///
-    /// `Some` containing the byte index of the last matching character
+    /// `Some` containing the byte index of the last matching pattern
     /// or `None` if there is no match.
     ///
     /// # Example
@@ -1581,6 +1458,7 @@ pub trait StrSlice<'a> {
     ///
     /// assert_eq!(s.rfind('L'), Some(13));
     /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.find("老虎 L"), Some(6));
     ///
     /// // the second space
     /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
@@ -1588,28 +1466,16 @@ pub trait StrSlice<'a> {
     /// // searches for an occurrence of either `1` or `2`, but neither are found
     /// assert_eq!(s.rfind(&['1', '2']), None);
     /// ```
-    fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
+    #[inline]
+    fn rfind<M: RightMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> Option<uint> {
+        self.rmatch_indices(pat).next().map(|(a, _)| a)
+    }
 
-    /// Returns the byte index of the first matching substring
-    ///
-    /// # Arguments
-    ///
-    /// * `needle` - The string to search for
-    ///
-    /// # Return value
-    ///
-    /// `Some` containing the byte index of the first matching substring
-    /// or `None` if there is no match.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let s = "Löwe 老虎 Léopard";
-    ///
-    /// assert_eq!(s.find_str("老虎 L"), Some(6));
-    /// assert_eq!(s.find_str("muffin man"), None);
-    /// ```
-    fn find_str(&self, &str) -> Option<uint>;
+    #[deprecated = "Use the generic .find()"]
+    /// Deprecated
+    fn find_str(self, s: &str) -> Option<uint> {
+        self.find(s)
+    }
 
     /// Retrieves the first character from a string slice and returns
     /// it. This does not allocate a new string; instead, it returns a
@@ -1661,13 +1527,8 @@ pub trait StrSlice<'a> {
 
 impl<'a> StrSlice<'a> for &'a str {
     #[inline]
-    fn contains<'a>(&self, needle: &'a str) -> bool {
-        self.find_str(needle).is_some()
-    }
-
-    #[inline]
-    fn contains_char(&self, needle: char) -> bool {
-        self.find(needle).is_some()
+    fn contains<M, P: Pattern<'a, M>>(self, pat: P) -> bool {
+        pat.is_contained_in(self)
     }
 
     #[inline]
@@ -1686,69 +1547,61 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep> {
-        CharSplits {
-            string: *self,
-            only_ascii: sep.only_ascii(),
-            sep: sep,
-            allow_trailing_empty: true,
-            finished: false,
-        }
+    fn split<M, P: Pattern<'a, M>>(self, pat: P) -> Splits<M> {
+        Splits::new(self, pat)
     }
 
     #[inline]
-    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<'a, Sep> {
-        CharSplitsN {
-            iter: self.split(sep),
-            count: count,
-            invert: false,
-        }
+    fn rsplit<M, P: Pattern<'a, M>>(self, pat: P) -> RSplits<M> {
+        RSplits::new(self, pat)
     }
 
     #[inline]
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep)
-        -> CharSplits<'a, Sep> {
-        CharSplits {
-            allow_trailing_empty: false,
-            ..self.split(sep)
-        }
+    fn split_terminator<M, P: Pattern<'a, M>>(self, pat: P) -> TermSplits<M> {
+        TermSplits::new(self, pat)
     }
 
     #[inline]
-    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<'a, Sep> {
-        CharSplitsN {
-            iter: self.split(sep),
-            count: count,
-            invert: true,
-        }
+    fn rsplit_terminator<M, P: Pattern<'a, M>>(self, pat: P) -> RTermSplits<M> {
+        RTermSplits::new(self, pat)
     }
 
     #[inline]
-    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a> {
-        assert!(!sep.is_empty())
-        MatchIndices {
-            haystack: *self,
-            needle: sep,
-            searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
-        }
+    fn splitn<M, P: Pattern<'a, M>>(self, n: uint, pat: P) -> NSplits<M> {
+        NSplits::new(self, n, pat)
     }
 
     #[inline]
-    fn split_str(&self, sep: &'a str) -> StrSplits<'a> {
-        StrSplits {
-            it: self.match_indices(sep),
-            last_end: 0,
-            finished: false
-        }
+    fn rsplitn<M, P: Pattern<'a, M>>(self, n: uint, pat: P) -> RNSplits<M> {
+        RNSplits::new(self, n, pat)
     }
 
     #[inline]
-    fn lines(&self) -> CharSplits<'a, char> {
+    fn matches<M, P: Pattern<'a, M>>(self, pat: P) -> Matches<M> {
+        Matches::new(self, pat)
+    }
+
+    #[inline]
+    fn rmatches<M, P: Pattern<'a, M>>(self, pat: P) -> RMatches<M> {
+        RMatches::new(self, pat)
+    }
+
+    #[inline]
+    fn match_indices<M, P: Pattern<'a, M>>(self, pat: P) -> MatchIndices<M> {
+        MatchIndices::new(self, pat)
+    }
+
+    #[inline]
+    fn rmatch_indices<M, P: Pattern<'a, M>>(self, pat: P) -> RMatchIndices<M> {
+        RMatchIndices::new(self, pat)
+    }
+
+    #[inline]
+    fn lines(&self) -> TermSplits<CharMatcher<'a>> {
         self.split_terminator('\n')
     }
 
+    #[inline]
     fn lines_any(&self) -> AnyLines<'a> {
         self.lines().map(|line| {
             let l = line.len();
@@ -1804,15 +1657,15 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn starts_with<'a>(&self, needle: &'a str) -> bool {
-        let n = needle.len();
-        self.len() >= n && needle.as_bytes() == self.as_bytes().slice_to(n)
+    fn starts_with<M: LeftMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> bool {
+        self.match_indices(pat).next()
+            .map(|(a, _)| a == 0).unwrap_or(false)
     }
 
     #[inline]
-    fn ends_with(&self, needle: &str) -> bool {
-        let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == self.as_bytes().slice_from(m - n)
+    fn ends_with<M: RightMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> bool {
+        self.rmatch_indices(pat).next()
+            .map(|(a, s)| a + s.len() == self.len()).unwrap_or(false)
     }
 
     #[inline]
@@ -1847,6 +1700,56 @@ impl<'a> StrSlice<'a> for &'a str {
                 unsafe { raw::slice_bytes(*self, 0u, next) }
             }
         }
+    }
+
+    #[inline]
+    fn trim_left_matches<M: LeftMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str {
+        let mut trim_start = 0;
+        for (i, s) in self.match_indices(pat) {
+            if i == trim_start {
+                trim_start += s.len();
+            } else {
+                break;
+            }
+        }
+        unsafe { raw::slice_unchecked(self, trim_start, self.len()) }
+    }
+
+    #[inline]
+    fn trim_right_matches<M: RightMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str {
+        let mut trim_end = self.len();
+        for (i, s) in self.rmatch_indices(pat) {
+            if i + s.len() == trim_end {
+                trim_end -= s.len();
+            } else {
+                break;
+            }
+        }
+        unsafe { raw::slice_unchecked(self, 0, trim_end) }
+    }
+
+    #[inline]
+    fn trim_matches<M:  DoubleEndedMatcher<'a>, P: Pattern<'a, M>>(self, pat: P) -> &'a str {
+        let mut match_indices = self.match_indices(pat);
+        let mut trim_start = 0;
+        let mut possible_end_match = None;
+        for (i, s) in match_indices {
+            if i == trim_start {
+                trim_start += s.len();
+            } else {
+                possible_end_match = Some((i, s));
+                break;
+            }
+        }
+        let mut trim_end = self.len();
+        for (i, s) in match_indices.rev().chain(possible_end_match.move_iter()) {
+            if i + s.len() == trim_end {
+                trim_end -= s.len();
+            } else {
+                break;
+            }
+        }
+        unsafe { raw::slice_unchecked(self, trim_start, trim_end) }
     }
 
     #[inline]
@@ -1924,38 +1827,6 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn as_bytes(&self) -> &'a [u8] {
         unsafe { mem::transmute(*self) }
-    }
-
-    fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {
-        if search.only_ascii() {
-            self.bytes().position(|b| search.matches(b as char))
-        } else {
-            for (index, c) in self.char_indices() {
-                if search.matches(c) { return Some(index); }
-            }
-            None
-        }
-    }
-
-    fn rfind<C: CharEq>(&self, mut search: C) -> Option<uint> {
-        if search.only_ascii() {
-            self.bytes().rposition(|b| search.matches(b as char))
-        } else {
-            for (index, c) in self.char_indices().rev() {
-                if search.matches(c) { return Some(index); }
-            }
-            None
-        }
-    }
-
-    fn find_str(&self, needle: &str) -> Option<uint> {
-        if needle.is_empty() {
-            Some(0)
-        } else {
-            self.match_indices(needle)
-                .next()
-                .map(|(start, _end)| start)
-        }
     }
 
     #[inline]

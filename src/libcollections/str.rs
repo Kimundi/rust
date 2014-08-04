@@ -87,12 +87,23 @@ use unicode;
 use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
+pub use core::str::Utf8Char;
 pub use core::str::{Bytes, CharSplits};
-pub use core::str::{CharSplitsN, AnyLines, MatchIndices, StrSplits};
+pub use core::str::{CharSplitsN, AnyLines, StrSplits};
 pub use core::str::{eq_slice, is_utf8, is_utf16, Utf16Items};
 pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrSlice};
+pub use core::str::{Pattern};
+pub use core::str::{Matcher, LeftMatcher, RightMatcher, DoubleEndedMatcher};
+pub use core::str::{CharMatcher, StrMatcher, CharFnMatcher};
+pub use core::str::{CharSliceMatcher, CharClosureMatcher};
+pub use core::str::{CharEqMatcher, CharEqPattern};
+pub use core::str::{Matches, RMatches};
+pub use core::str::{MatchIndices, RMatchIndices};
+pub use core::str::{Splits, RSplits};
+pub use core::str::{NSplits, RNSplits};
+pub use core::str::{TermSplits, RTermSplits};
 pub use unicode::str::{UnicodeStrSlice, Words, Graphemes, GraphemeIndices};
 
 /*
@@ -428,7 +439,8 @@ impl<'a> Iterator<char> for Recompositions<'a> {
 pub fn replace(s: &str, from: &str, to: &str) -> String {
     let mut result = String::new();
     let mut last_end = 0;
-    for (start, end) in s.match_indices(from) {
+    for (start, match_str) in s.match_indices(from) {
+        let end = start + match_str.len();
         result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
         result.push_str(to);
         last_end = end;
@@ -753,15 +765,7 @@ pub trait StrAllocating: Str {
     /// ```
     fn replace(&self, from: &str, to: &str) -> String {
         let me = self.as_slice();
-        let mut result = String::new();
-        let mut last_end = 0;
-        for (start, end) in me.match_indices(from) {
-            result.push_str(unsafe{raw::slice_bytes(me, last_end, start)});
-            result.push_str(to);
-            last_end = end;
-        }
-        result.push_str(unsafe{raw::slice_bytes(me, last_end, me.len())});
-        result
+        replace(me, from, to)
     }
 
     #[allow(missing_doc)]
@@ -1787,10 +1791,12 @@ mod tests {
         rsplit.reverse();
         assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let split: Vec<&str> = data.split(|c: char| c == ' ').collect();
+        let f = |c: char| c == ' ';
+        let split: Vec<&str> = data.split(f).collect();
         assert_eq!( split, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut rsplit: Vec<&str> = data.split(|c: char| c == ' ').rev().collect();
+        let f = |c: char| c == ' ';
+        let mut rsplit: Vec<&str> = data.split(f).rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
@@ -1802,10 +1808,12 @@ mod tests {
         rsplit.reverse();
         assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let split: Vec<&str> = data.split(|c: char| c == 'ä').collect();
+        let f = |c: char| c == 'ä';
+        let split: Vec<&str> = data.split(f).collect();
         assert_eq!( split, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut rsplit: Vec<&str> = data.split(|c: char| c == 'ä').rev().collect();
+        let f = |c: char| c == 'ä';
+        let mut rsplit: Vec<&str> = data.split(f).rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
@@ -1817,14 +1825,16 @@ mod tests {
         let split: Vec<&str> = data.splitn(3, ' ').collect();
         assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
-        let split: Vec<&str> = data.splitn(3, |c: char| c == ' ').collect();
+        let f = |c: char| c == ' ';
+        let split: Vec<&str> = data.splitn(3, f).collect();
         assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         // Unicode
         let split: Vec<&str> = data.splitn(3, 'ä').collect();
         assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
-        let split: Vec<&str> = data.splitn(3, |c: char| c == 'ä').collect();
+        let f = |c: char| c == 'ä';
+        let split: Vec<&str> = data.splitn(3, f).collect();
         assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
     }
 
@@ -1836,7 +1846,8 @@ mod tests {
         split.reverse();
         assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == ' ').collect();
+        let f = |c: char| c == ' ';
+        let mut split: Vec<&str> = data.rsplitn(3, f).collect();
         split.reverse();
         assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
@@ -1845,7 +1856,8 @@ mod tests {
         split.reverse();
         assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == 'ä').collect();
+        let f = |c: char| c == 'ä';
+        let mut split: Vec<&str> = data.rsplitn(3, f).collect();
         split.reverse();
         assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
     }
@@ -2458,7 +2470,7 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        b.iter(|| assert_eq!(s.split(NotAscii('V')).count(), 3));
+        b.iter(|| assert_eq!(s.split(CharEqPattern(NotAscii('V'))).count(), 3));
     }
 
 
@@ -2484,7 +2496,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(NotAscii(' ')).count(), len));
+        b.iter(|| assert_eq!(s.split(CharEqPattern(NotAscii(' '))).count(), len));
     }
 
     #[bench]
@@ -2501,7 +2513,10 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(|c: char| c == ' ').count(), len));
+        b.iter(|| {
+            let f = |c: char| c == ' ';
+            assert_eq!(s.split(f).count(), len)
+        });
     }
 
     #[bench]

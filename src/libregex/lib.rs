@@ -384,6 +384,7 @@ extern crate regex;
 // unicode tables for character classes are defined in libunicode
 extern crate unicode;
 
+use std::str::{Pattern, Matcher, LeftMatcher};
 pub use parse::Error;
 pub use re::{Regex, Captures, SubCaptures, SubCapturesPos};
 pub use re::{FindCaptures, FindMatches};
@@ -431,4 +432,103 @@ pub mod native {
         StepState, StepMatchEarlyReturn, StepMatch, StepContinue,
         CharReader, find_prefix,
     };
+}
+
+/// String pattern implementation for a regular expression
+pub struct RegexMatcher<'t, 'r> {
+    str: &'t str,
+    regex: FindMatches<'r, 't>
+}
+
+impl<'t, 'r> Pattern<'t, RegexMatcher<'t, 'r>> for &'r Regex {
+    fn into_matcher(self, s: &'t str) -> RegexMatcher<'t, 'r> {
+        RegexMatcher {
+            str: s,
+            regex: self.find_iter(s)
+        }
+    }
+    fn is_contained_in(self, s: &str) -> bool {
+        self.is_match(s)
+    }
+}
+
+impl<'t, 'r> Matcher<'t> for RegexMatcher<'t, 'r> {
+    fn get_haystack(&self) -> &'t str {
+        self.str
+    }
+}
+
+impl<'t, 'r> LeftMatcher<'t> for RegexMatcher<'t, 'r> {
+    fn next_match(&mut self) -> Option<(uint, &'t str)> {
+        // FIXME: Maybe replace slice() call with unchecked variant
+        self.regex.next().map(|(a, b)| (a, self.str.slice(a, b)))
+    }
+}
+
+#[cfg(test)]
+mod str_matcher_tests {
+    use super::Regex;
+
+    macro_rules! iter_eq {
+        ($i:expr, $s:expr) => {
+            {
+                let i: Vec<_> = $i.collect();
+                let s = $s;
+                assert_eq!(i.as_slice(), s.as_slice());
+            }
+        }
+    }
+
+    #[test]
+    fn test1() {
+        let s = "abcbdef";
+        let r = Regex::new("c").unwrap();
+        iter_eq!(s.match_indices(&r), [(2u, "c")]);
+    }
+
+    #[test]
+    fn test2() {
+        let s = "abcbdef";
+        let r = Regex::new("b").unwrap();
+        iter_eq!(s.match_indices(&r), [(1u, "b"), (3, "b")]);
+    }
+
+    #[test]
+    fn test3() {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let r = Regex::new("a[mrd]").unwrap();
+        iter_eq!(s.match_indices(&r),
+                 [(26, "am"), (31, "ar"), (36, "ad"), (49u, "am"), (62, "am")]);
+        iter_eq!(s.matches(&r), ["am", "ar", "ad", "am", "am"]);
+
+        let r = Regex::new("中").unwrap();
+        iter_eq!(s.match_indices(&r), [(12u, "中")]);
+    }
+
+    #[test]
+    fn splitn() {
+        let re = Regex::new(r"\d+").unwrap();
+        let s = "cauchy123plato456tyler789binx";
+        iter_eq!(s.splitn(&re, 2), ["cauchy", "plato", "tyler789binx"]);
+    }
+
+    #[test]
+    fn split() {
+        let re = Regex::new(r"\d+").unwrap();
+        let s = "cauchy123plato456tyler789binx";
+        iter_eq!(s.split(&re), ["cauchy", "plato", "tyler", "binx"]);
+    }
+
+    #[test]
+    fn split2() {
+        let s = "abcaaaaabdef";
+        let r = Regex::new("aa").unwrap();
+        iter_eq!(s.split(&r), ["abc", "", "abdef"]);
+    }
+
+    #[test]
+    fn test_starts_with() {
+        assert!("foobar".starts_with(&{Regex::new("fo+").unwrap()}));
+        assert!(!"foobar".starts_with(&{Regex::new("[ob]").unwrap()}));
+    }
 }

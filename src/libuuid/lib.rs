@@ -393,7 +393,7 @@ impl Uuid {
         }
 
         // Split string up by hyphens into groups
-        let hex_groups: Vec<&str> = us.split_str("-").collect();
+        let hex_groups: Vec<&str> = us.split("-").collect();
 
         // Get the length of each group
         let group_lens: Vec<uint> = hex_groups.iter().map(|&v| v.len()).collect();

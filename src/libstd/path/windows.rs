@@ -24,7 +24,7 @@ use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
 use mem;
 use option::{Option, Some, None};
 use slice::{Slice, ImmutableSlice};
-use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
+use str::{TermSplits, Str, StrAllocating, StrVector, StrSlice, CharMatcher};
 use string::String;
 use unicode::char::UnicodeChar;
 use vec::Vec;
@@ -36,7 +36,7 @@ use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
 pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
-                                       CharSplits<'a, char>>;
+                                       TermSplits<CharMatcher<'a>>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],

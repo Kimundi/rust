@@ -17,7 +17,7 @@
 #![doc(primitive = "str")]
 
 use self::OldSearcher::{TwoWay, TwoWayLong};
-use self::pattern::Pattern;
+use self::pattern::{Pattern, BoundedPattern};
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char::CharExt;
@@ -408,7 +408,7 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
 /// wrapper types of the form X<'a, P>
 macro_rules! derive_pattern_clone {
     (clone $t:ident with |$s:ident| $e:expr) => {
-        impl<'a, P: Pattern<'a>> Clone for $t<'a, P>
+        impl<'a, P: Pattern> Clone for $t<'a, P>
             where P::Searcher: Clone
         {
             fn clone(&self) -> Self {
@@ -422,7 +422,7 @@ macro_rules! derive_pattern_clone {
 /// This macro generates two public iterator structs
 /// wrapping an private internal one that makes use of the `Pattern` API.
 ///
-/// For all patterns `P: Pattern<'a>` the following items will be
+/// For all patterns `P: Pattern` the following items will be
 /// generated (generics ommitted):
 ///
 /// struct $forward_iterator($internal_iterator);
@@ -482,10 +482,10 @@ macro_rules! generate_pattern_iterators {
     } => {
         $(#[$forward_iterator_attribute])*
         $(#[$common_stability_attribute])*
-        pub struct $forward_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+        pub struct $forward_iterator<'a, P: Pattern>($internal_iterator<'a, P>);
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
+        impl<'a, P: Pattern> Iterator for $forward_iterator<'a, P> {
             type Item = $iterty;
 
             #[inline]
@@ -495,7 +495,7 @@ macro_rules! generate_pattern_iterators {
         }
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Clone for $forward_iterator<'a, P>
+        impl<'a, P: Pattern> Clone for $forward_iterator<'a, P>
             where P::Searcher: Clone
         {
             fn clone(&self) -> Self {
@@ -505,10 +505,10 @@ macro_rules! generate_pattern_iterators {
 
         $(#[$reverse_iterator_attribute])*
         $(#[$common_stability_attribute])*
-        pub struct $reverse_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+        pub struct $reverse_iterator<'a, P: Pattern>($internal_iterator<'a, P>);
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Iterator for $reverse_iterator<'a, P>
+        impl<'a, P: Pattern> Iterator for $reverse_iterator<'a, P>
             where P::Searcher: ReverseSearcher<'a>
         {
             type Item = $iterty;
@@ -520,7 +520,7 @@ macro_rules! generate_pattern_iterators {
         }
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Clone for $reverse_iterator<'a, P>
+        impl<'a, P: Pattern> Clone for $reverse_iterator<'a, P>
             where P::Searcher: Clone
         {
             fn clone(&self) -> Self {
@@ -538,7 +538,7 @@ macro_rules! generate_pattern_iterators {
                            $reverse_iterator:ident, $iterty:ty
     } => {
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $forward_iterator<'a, P>
+        impl<'a, P: Pattern> DoubleEndedIterator for $forward_iterator<'a, P>
             where P::Searcher: DoubleEndedSearcher<'a>
         {
             #[inline]
@@ -548,7 +548,7 @@ macro_rules! generate_pattern_iterators {
         }
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $reverse_iterator<'a, P>
+        impl<'a, P: Pattern> DoubleEndedIterator for $reverse_iterator<'a, P>
             where P::Searcher: DoubleEndedSearcher<'a>
         {
             #[inline]
@@ -568,7 +568,7 @@ derive_pattern_clone!{
     clone SplitInternal
     with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
 }
-struct SplitInternal<'a, P: Pattern<'a>> {
+struct SplitInternal<'a, P: Pattern> {
     start: usize,
     end: usize,
     matcher: P::Searcher,
@@ -576,7 +576,7 @@ struct SplitInternal<'a, P: Pattern<'a>> {
     finished: bool,
 }
 
-impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
+impl<'a, P: Pattern> SplitInternal<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
         if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
@@ -666,13 +666,13 @@ derive_pattern_clone!{
     clone SplitNInternal
     with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
 }
-struct SplitNInternal<'a, P: Pattern<'a>> {
+struct SplitNInternal<'a, P: Pattern> {
     iter: SplitInternal<'a, P>,
     /// The number of splits remaining
     count: usize,
 }
 
-impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
+impl<'a, P: Pattern> SplitNInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         match self.count {
@@ -712,9 +712,9 @@ derive_pattern_clone!{
     clone MatchIndicesInternal
     with |s| MatchIndicesInternal(s.0.clone())
 }
-struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
+struct MatchIndicesInternal<'a, P: Pattern>(P::Searcher);
 
-impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
+impl<'a, P: Pattern> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<(usize, usize)> {
         self.0.next_match()
@@ -747,9 +747,9 @@ derive_pattern_clone!{
     clone MatchesInternal
     with |s| MatchesInternal(s.0.clone())
 }
-struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
+struct MatchesInternal<'a, P: Pattern>(P::Searcher);
 
-impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
+impl<'a, P: Pattern> MatchesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         self.0.next_match().map(|(a, b)| unsafe {
@@ -1496,38 +1496,38 @@ pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 
-    fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
-    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
+    fn contains<'a, P: Pattern>(&'a self, pat: P) -> bool;
+    fn contains_char<'a, P: Pattern>(&'a self, pat: P) -> bool;
     fn chars<'a>(&'a self) -> Chars<'a>;
     fn bytes<'a>(&'a self) -> Bytes<'a>;
     fn char_indices<'a>(&'a self) -> CharIndices<'a>;
-    fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
-    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+    fn split<'a, P: Pattern>(&'a self, pat: P) -> Split<'a, P>;
+    fn rsplit<'a, P: Pattern>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
-    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+    fn splitn<'a, P: Pattern>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
+    fn rsplitn<'a, P: Pattern>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
-    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
-    fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+    fn split_terminator<'a, P: Pattern>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    fn rsplit_terminator<'a, P: Pattern>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
-    fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P>;
-    fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
+    fn matches<'a, P: Pattern>(&'a self, pat: P) -> Matches<'a, P>;
+    fn rmatches<'a, P: Pattern>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
-    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
-    fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+    fn match_indices<'a, P: Pattern>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    fn rmatch_indices<'a, P: Pattern>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> usize;
     fn slice_chars<'a>(&'a self, begin: usize, end: usize) -> &'a str;
     unsafe fn slice_unchecked<'a>(&'a self, begin: usize, end: usize) -> &'a str;
-    fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
-    fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
+    fn starts_with<'a, P: Pattern>(&'a self, pat: P) -> bool;
+    fn ends_with<'a, P: Pattern>(&'a self, pat: P) -> bool
         where P::Searcher: ReverseSearcher<'a>;
-    fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    fn trim_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str
         where P::Searcher: DoubleEndedSearcher<'a>;
-    fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str;
-    fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    fn trim_left_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str;
+    fn trim_right_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>;
     fn is_char_boundary(&self, index: usize) -> bool;
     fn char_range_at(&self, start: usize) -> CharRange;
@@ -1535,10 +1535,10 @@ pub trait StrExt {
     fn char_at(&self, i: usize) -> char;
     fn char_at_reverse(&self, i: usize) -> char;
     fn as_bytes<'a>(&'a self) -> &'a [u8];
-    fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
-    fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
+    fn find<'a, P: Pattern>(&'a self, pat: P) -> Option<usize>;
+    fn rfind<'a, P: Pattern>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>;
-    fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
+    fn find_str<'a, P: Pattern>(&'a self, pat: P) -> Option<usize>;
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> usize;
     fn as_ptr(&self) -> *const u8;
@@ -1556,12 +1556,12 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
 
 impl StrExt for str {
     #[inline]
-    fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+    fn contains<'a, P: Pattern>(&'a self, pat: P) -> bool {
         pat.is_contained_in(self)
     }
 
     #[inline]
-    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+    fn contains_char<'a, P: Pattern>(&'a self, pat: P) -> bool {
         pat.is_contained_in(self)
     }
 
@@ -1581,7 +1581,7 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
+    fn split<'a, P: Pattern>(&'a self, pat: P) -> Split<'a, P> {
         Split(SplitInternal {
             start: 0,
             end: self.len(),
@@ -1592,14 +1592,14 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+    fn rsplit<'a, P: Pattern>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
         RSplit(self.split(pat).0)
     }
 
     #[inline]
-    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
+    fn splitn<'a, P: Pattern>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
         SplitN(SplitNInternal {
             iter: self.split(pat).0,
             count: count,
@@ -1607,14 +1607,14 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+    fn rsplitn<'a, P: Pattern>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
         RSplitN(self.splitn(count, pat).0)
     }
 
     #[inline]
-    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
+    fn split_terminator<'a, P: Pattern>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         SplitTerminator(SplitInternal {
             allow_trailing_empty: false,
             ..self.split(pat).0
@@ -1622,31 +1622,31 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+    fn rsplit_terminator<'a, P: Pattern>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
         RSplitTerminator(self.split_terminator(pat).0)
     }
 
     #[inline]
-    fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
+    fn matches<'a, P: Pattern>(&'a self, pat: P) -> Matches<'a, P> {
         Matches(MatchesInternal(pat.into_searcher(self)))
     }
 
     #[inline]
-    fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
+    fn rmatches<'a, P: Pattern>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
         RMatches(self.matches(pat).0)
     }
 
     #[inline]
-    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
+    fn match_indices<'a, P: Pattern>(&'a self, pat: P) -> MatchIndices<'a, P> {
         MatchIndices(MatchIndicesInternal(pat.into_searcher(self)))
     }
 
     #[inline]
-    fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+    fn rmatch_indices<'a, P: Pattern>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
         RMatchIndices(self.match_indices(pat).0)
@@ -1696,19 +1696,19 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+    fn starts_with<'a, P: Pattern>(&'a self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
 
     #[inline]
-    fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
+    fn ends_with<'a, P: Pattern>(&'a self, pat: P) -> bool
         where P::Searcher: ReverseSearcher<'a>
     {
         pat.is_suffix_of(self)
     }
 
     #[inline]
-    fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    fn trim_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str
         where P::Searcher: DoubleEndedSearcher<'a>
     {
         let mut i = 0;
@@ -1729,7 +1729,7 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+    fn trim_left_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str {
         let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
@@ -1742,7 +1742,7 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    fn trim_right_matches<'a, P: Pattern>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>
     {
         let mut j = 0;
@@ -1817,17 +1817,17 @@ impl StrExt for str {
         unsafe { mem::transmute(self) }
     }
 
-    fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
+    fn find<'a, P: Pattern>(&'a self, pat: P) -> Option<usize> {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
-    fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
+    fn rfind<'a, P: Pattern>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>
     {
         pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 
-    fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
+    fn find_str<'a, P: Pattern>(&'a self, pat: P) -> Option<usize> {
         self.find(pat)
     }
 

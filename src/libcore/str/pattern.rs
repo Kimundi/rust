@@ -19,7 +19,21 @@ use prelude::*;
 
 /// A string pattern.
 ///
-/// A `Pattern<'a>` expresses that the implementing type
+/// A `Pattern` expresses that the implementing type
+/// can be used as a string pattern for searching in a `&str`.
+///
+/// For example, both `'a'` and `"aa"` are patterns that
+/// would match at index `1` in the string `"baaaab"`.
+///
+/// The trait itself acts as a builder for an associated
+/// `Searcher` type, which does the actual work of finding
+/// occurrences of the pattern in a string.
+pub trait Pattern: for<'a> BoundedPattern<'a> {}
+impl<'a, T: BoundedPattern<'a>> Pattern for T {}
+
+/// A string pattern.
+///
+/// A `BoundedPattern<'a>` expresses that the implementing type
 /// can be used as a string pattern for searching in a `&'a str`.
 ///
 /// For example, both `'a'` and `"aa"` are patterns that
@@ -28,7 +42,7 @@ use prelude::*;
 /// The trait itself acts as a builder for an associated
 /// `Searcher` type, which does the actual work of finding
 /// occurrences of the pattern in a string.
-pub trait Pattern<'a>: Sized {
+pub trait BoundedPattern<'a>: Sized {
     /// Associated searcher for this pattern
     type Searcher: Searcher<'a>;
 
@@ -88,7 +102,7 @@ pub enum SearchStep {
 /// matches of a pattern starting from the front (left) of a string.
 ///
 /// It will be implemented by associated `Searcher`
-/// types of the `Pattern` trait.
+/// types of the `BoundedPattern` trait.
 ///
 /// The trait is marked unsafe because the indices returned by the
 /// `next()` methods are required to lie on valid utf8 boundaries in
@@ -151,7 +165,7 @@ pub unsafe trait Searcher<'a> {
 /// matches of a pattern starting from the back (right) of a string.
 ///
 /// It will be implemented by associated `Searcher`
-/// types of the `Pattern` trait if the pattern supports searching
+/// types of the `BoundedPattern` trait if the pattern supports searching
 /// for it from the back.
 ///
 /// The index ranges returned by this trait are not required
@@ -277,7 +291,7 @@ struct CharEqSearcher<'a, C: CharEq> {
     ascii_only: bool,
 }
 
-impl<'a, C: CharEq> Pattern<'a> for CharEqPattern<C> {
+impl<'a, C: CharEq> BoundedPattern<'a> for CharEqPattern<C> {
     type Searcher = CharEqSearcher<'a, C>;
 
     #[inline]
@@ -344,7 +358,7 @@ impl<'a, C: CharEq> DoubleEndedSearcher<'a> for CharEqSearcher<'a, C> {}
 
 // Todo: Optimize the naive implementation here
 
-/// Associated type for `<&str as Pattern<'a>>::Searcher`.
+/// Associated type for `<&str as BoundedPattern<'a>>::Searcher`.
 #[derive(Clone)]
 pub struct StrSearcher<'a, 'b> {
     haystack: &'a str,
@@ -365,7 +379,7 @@ impl State {
 ///
 /// Will handle the pattern `""` as returning empty matches at each utf8
 /// boundary.
-impl<'a, 'b> Pattern<'a> for &'b str {
+impl<'a, 'b> BoundedPattern<'a> for &'b str {
     type Searcher = StrSearcher<'a, 'b>;
 
     #[inline]
@@ -549,9 +563,9 @@ macro_rules! searcher_methods {
 // Impl for char
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<char as Pattern<'a>>::Searcher`.
+/// Associated type for `<char as BoundedPattern<'a>>::Searcher`.
 #[derive(Clone)]
-pub struct CharSearcher<'a>(<CharEqPattern<char> as Pattern<'a>>::Searcher);
+pub struct CharSearcher<'a>(<CharEqPattern<char> as BoundedPattern<'a>>::Searcher);
 
 unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     searcher_methods!(forward);
@@ -564,7 +578,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given char
-impl<'a> Pattern<'a> for char {
+impl<'a> BoundedPattern<'a> for char {
     pattern_methods!(CharSearcher<'a>, CharEqPattern, CharSearcher);
 }
 
@@ -574,9 +588,9 @@ impl<'a> Pattern<'a> for char {
 
 // Todo: Change / Remove due to ambiguity in meaning.
 
-/// Associated type for `<&[char] as Pattern<'a>>::Searcher`.
+/// Associated type for `<&[char] as BoundedPattern<'a>>::Searcher`.
 #[derive(Clone)]
-pub struct CharSliceSearcher<'a, 'b>(<CharEqPattern<&'b [char]> as Pattern<'a>>::Searcher);
+pub struct CharSliceSearcher<'a, 'b>(<CharEqPattern<&'b [char]> as BoundedPattern<'a>>::Searcher);
 
 unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(forward);
@@ -589,7 +603,7 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
 impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
 /// Searches for chars that are equal to any of the chars in the array
-impl<'a, 'b> Pattern<'a> for &'b [char] {
+impl<'a, 'b> BoundedPattern<'a> for &'b [char] {
     pattern_methods!(CharSliceSearcher<'a, 'b>, CharEqPattern, CharSliceSearcher);
 }
 
@@ -597,9 +611,9 @@ impl<'a, 'b> Pattern<'a> for &'b [char] {
 // Impl for F: FnMut(char) -> bool
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<F as Pattern<'a>>::Searcher`.
+/// Associated type for `<F as BoundedPattern<'a>>::Searcher`.
 #[derive(Clone)]
-pub struct CharPredicateSearcher<'a, F>(<CharEqPattern<F> as Pattern<'a>>::Searcher)
+pub struct CharPredicateSearcher<'a, F>(<CharEqPattern<F> as BoundedPattern<'a>>::Searcher)
     where F: FnMut(char) -> bool;
 
 unsafe impl<'a, F> Searcher<'a> for CharPredicateSearcher<'a, F>
@@ -618,7 +632,7 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F>
     where F: FnMut(char) -> bool {}
 
 /// Searches for chars that match the given predicate
-impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
+impl<'a, F> BoundedPattern<'a> for F where F: FnMut(char) -> bool {
     pattern_methods!(CharPredicateSearcher<'a, F>, CharEqPattern, CharPredicateSearcher);
 }
 
@@ -627,6 +641,6 @@ impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'a, 'b> Pattern<'a> for &'b &'b str {
+impl<'a, 'b> BoundedPattern<'a> for &'b &'b str {
     pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
 }

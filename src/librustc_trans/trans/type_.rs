@@ -167,6 +167,10 @@ impl Type {
         ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
     }
 
+    pub fn str_slice(ccx: &CrateContext) -> Type {
+        ccx.tn().find_type("str_slice").unwrap()
+    }
+
     pub fn empty_struct(ccx: &CrateContext) -> Type {
         Type::struct_(ccx, &[], false)
     }

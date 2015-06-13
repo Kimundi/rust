@@ -86,6 +86,11 @@ pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
 pub fn calculate(tcx: &ty::ctxt) {
     let mut fmts = tcx.dependency_formats.borrow_mut();
     for &ty in tcx.sess.crate_types.borrow().iter() {
+        // Plugins depend on regular dylibs for now
+        let ty = match ty {
+            config::CrateTypePlugin => config::CrateTypeDylib,
+            ty => ty,
+        };
         fmts.insert(ty, calculate_type(&tcx.sess, ty));
     }
     tcx.sess.abort_if_errors();
@@ -126,7 +131,8 @@ fn calculate_type(sess: &session::Session,
         // Generating a dylib without `-C prefer-dynamic` means that we're going
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
-        config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => {
+        config::CrateTypeDylib |
+        config::CrateTypePlugin if !sess.opts.cg.prefer_dynamic => {
             match attempt_static(sess) {
                 Some(v) => return v,
                 None => {}
@@ -134,7 +140,9 @@ fn calculate_type(sess: &session::Session,
         }
 
         // Everything else falls through below
-        config::CrateTypeExecutable | config::CrateTypeDylib => {},
+        config::CrateTypeExecutable |
+        config::CrateTypeDylib |
+        config::CrateTypePlugin => {},
     }
 
     let mut formats = FnvHashMap();

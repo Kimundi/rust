@@ -2509,14 +2509,17 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let mut compressed = encoder::metadata_encoding_version.to_vec();
     compressed.push_all(&flate::deflate_bytes(&metadata));
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
-    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
+
+    let ccx = cx.metadata_ccx();
+
+    let llmeta = C_bytes_in_context(ccx.llcx(), &compressed[..]);
+    let llconst = C_struct_in_context(ccx.llcx(), &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
+        llvm::LLVMAddGlobal(ccx.llmod(), val_ty(llconst).to_ref(),
                             buf.as_ptr())
     };
     unsafe {
@@ -2525,6 +2528,115 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
         let name = CString::new(name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
+
+    {
+        let mut tuples = vec![];
+
+        let tcx = cx.tcx();
+
+        for (&node_id, symbol_name) in cx.item_symbols().borrow().iter() {
+            // Gather the data
+
+            let crate_local_path = ty::item_path_str(tcx, local_def(node_id));
+
+            println!("HACK: path    {}", crate_local_path);
+            println!("HACK: nodeid  {}", node_id);
+            println!("HACK: symbol  {}", symbol_name);
+
+            if !cx.reachable().contains(&node_id) {
+                println!("HACK: REJECT is not public reachable\n");
+                continue;
+            }
+
+            match tcx.map.get(node_id) {
+                ast_map::NodeItem(&ast::Item { node: ast::ItemFn(..), ..}) => (),
+                _ => {
+                    // FIXME Could enable methods as well, but the
+                    // stringified paths need to be formatted in proper AILS
+                    // for this
+                    println!("HACK: REJECT is not a ItemFn\n");
+                    continue;
+                }
+            }
+
+            let fn_ty = ty::node_id_to_type(tcx, node_id);
+            let fn_ty = match fn_ty.sty {
+                ty::TyBareFn(Some(_), b) => {
+                    ty::mk_bare_fn(tcx, None, b)
+                }
+                ty::TyBareFn(None, b) => {
+                    println!("HACK: NOTE expected function-type, is function-ptr");
+                    ty::mk_bare_fn(tcx, None, b)
+                }
+                _ => {
+                    println!("HACK: REJECT is not a TyBareFn\n");
+                    continue;
+                }
+            };
+            let fn_ty = monomorphize::normalize_associated_type(tcx, &fn_ty);
+            let fn_ptr_type_id = ty::hash_crate_independent(tcx, fn_ty, &cx.link_meta().crate_hash);
+
+            let namebuf = CString::new(&symbol_name[..]).unwrap();
+            let llvm_fn_ptr = unsafe {
+                // Just lookup the ptr while pretending its a *u8.
+                llvm::LLVMGetOrInsertGlobal(ccx.llmod(), namebuf.as_ptr(), llvm::LLVMInt8TypeInContext(ccx.llcx()))
+            };
+
+            println!("HACK: type_id {}\n", fn_ptr_type_id);
+
+            tuples.push((fn_ptr_type_id, crate_local_path, llvm_fn_ptr));
+        }
+
+        // Sort by type_id, path to enable use of binary search for lookup
+        tuples.sort_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)));
+
+        let tuples: Vec<_> = tuples
+            .into_iter()
+            .inspect(|&(type_id, ref path, _)| {
+                println!("HACK: ({}, {}, ?)", type_id, path);
+            })
+            .map(|(fn_ptr_type_id, crate_local_path, llvm_fn_ptr)| {
+                // Construct tuple
+                let fields = [
+                    common::C_u64(&ccx, fn_ptr_type_id),
+                    common::C_str_slice(&ccx, ::syntax::parse::token::intern_and_get_ident(&crate_local_path)),
+                    llvm_fn_ptr,
+                ];
+                common::C_struct(&ccx, &fields, false)
+            })
+            .collect();
+
+        let tuple_type = Type::struct_(&ccx, &[Type::i64(&ccx), Type::str_slice(&ccx), Type::i8p(&ccx)], false);
+
+        // Note: this was supposed to be a static slice, but due to an accident
+        // resulted into a prefix-length encoded array instead...
+        // Todo: How do I add pointer indirection for constructing an actual slice?
+        let slice_array = common::C_array(tuple_type, &tuples);
+        let slice_len = common::C_uint(&ccx, tuples.len());
+        let sized_array = common::C_struct(&ccx, &[slice_len, slice_array], false);
+
+        let crate_types = ccx.sess().crate_types.borrow();
+        let crate_type = if crate_types.len() == 1 { Some(crate_types[0]) }
+                         else { None };
+
+        if let Some(config::CrateTypePlugin) = crate_type {
+            println!("HACK: Generating symbol");
+            let buf = CString::new("rust_plugin_typeinfo").unwrap();
+            println!("HACK: trace 1");
+            let llglobal = unsafe {
+                llvm::LLVMAddGlobal(ccx.llmod(), val_ty(sized_array).to_ref(), buf.as_ptr())
+            };
+            println!("HACK: trace 2");
+            unsafe {
+                llvm::LLVMSetInitializer(llglobal, sized_array);
+            }
+            println!("HACK: trace 3");
+        } else {
+            println!("HACK: Unsupported list of crate types: {:?}", &crate_types[..]);
+        }
+
+    }
+
     return metadata;
 }
 
@@ -2748,10 +2860,14 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
     }
 
-    let metadata_module = ModuleTranslation {
-        llcx: shared_ccx.metadata_llcx(),
-        llmod: shared_ccx.metadata_llmod(),
+    let metadata_module = {
+        let metadata_ccx = shared_ccx.metadata_ccx();
+        ModuleTranslation {
+            llcx: metadata_ccx.llcx(),
+            llmod: metadata_ccx.llmod(),
+        }
     };
+
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 

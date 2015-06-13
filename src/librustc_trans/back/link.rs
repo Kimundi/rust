@@ -434,7 +434,8 @@ pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
     match (sess.target.target.options.dynamic_linking,
            sess.target.target.options.executables, crate_type) {
-        (false, _, config::CrateTypeDylib) => true,
+        (false, _, config::CrateTypeDylib) |
+        (false, _, config::CrateTypePlugin) => true,
         (_, false, config::CrateTypeExecutable) => true,
         _ => false
     }
@@ -456,7 +457,7 @@ pub fn filename_for_input(sess: &Session,
         config::CrateTypeRlib => {
             out_filename.with_file_name(&format!("lib{}.rlib", libname))
         }
-        config::CrateTypeDylib => {
+        config::CrateTypeDylib | config::CrateTypePlugin => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
             out_filename.with_file_name(&format!("{}{}{}",
@@ -519,7 +520,7 @@ fn link_binary_output(sess: &Session,
         config::CrateTypeExecutable => {
             link_natively(sess, trans, false, &obj_filename, &out_filename);
         }
-        config::CrateTypeDylib => {
+        config::CrateTypeDylib | config::CrateTypePlugin => {
             link_natively(sess, trans, true, &obj_filename, &out_filename);
         }
     }

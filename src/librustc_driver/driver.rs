@@ -858,6 +858,9 @@ pub fn collect_crate_types(session: &Session,
                 Some(ref n) if *n == "dylib" => {
                     Some(config::CrateTypeDylib)
                 }
+                Some(ref n) if *n == "plugin" => {
+                    Some(config::CrateTypePlugin)
+                }
                 Some(ref n) if *n == "lib" => {
                     Some(config::default_lib_output())
                 }

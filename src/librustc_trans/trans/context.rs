@@ -60,8 +60,7 @@ pub struct Stats {
 pub struct SharedCrateContext<'tcx> {
     local_ccxs: Vec<LocalCrateContext<'tcx>>,
 
-    metadata_llmod: ModuleRef,
-    metadata_llcx: ContextRef,
+    metadata_ccx: Option<LocalCrateContext<'tcx>>, // None during initialization
 
     export_map: ExportMap,
     reachable: NodeSet,
@@ -248,10 +247,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
                check_overflow: bool,
                check_drop_flag_for_sanity: bool)
                -> SharedCrateContext<'tcx> {
-        let (metadata_llcx, metadata_llmod) = unsafe {
-            create_context_and_module(&tcx.sess, "metadata")
-        };
-
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -299,8 +294,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
         let mut shared_ccx = SharedCrateContext {
             local_ccxs: Vec::with_capacity(local_count),
-            metadata_llmod: metadata_llmod,
-            metadata_llcx: metadata_llcx,
+            metadata_ccx: None,
             export_map: export_map,
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap()),
@@ -339,6 +333,9 @@ impl<'tcx> SharedCrateContext<'tcx> {
             shared_ccx.local_ccxs.push(local_ccx);
         }
 
+        let metadata_ccx = LocalCrateContext::new(&shared_ccx, "metadata");
+        shared_ccx.metadata_ccx = Some(metadata_ccx);
+
         shared_ccx
     }
 
@@ -371,13 +368,8 @@ impl<'tcx> SharedCrateContext<'tcx> {
         }
     }
 
-
-    pub fn metadata_llmod(&self) -> ModuleRef {
-        self.metadata_llmod
-    }
-
-    pub fn metadata_llcx(&self) -> ContextRef {
-        self.metadata_llcx
+    pub fn metadata_ccx<'a>(&'a self) -> CrateContext<'a, 'tcx> {
+        self.metadata_ccx.as_ref().unwrap().dummy_ccx(self)
     }
 
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {

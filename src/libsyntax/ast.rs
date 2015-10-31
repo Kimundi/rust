@@ -917,6 +917,11 @@ pub enum Expr_ {
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
 
+    /// An expression with an attribute.
+    ///
+    /// For example, `#[foo] 5`
+    ExprAttr(P<Attribute>, P<Expr>),
+
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(P<Expr>)
 }

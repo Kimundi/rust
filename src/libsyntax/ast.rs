@@ -705,6 +705,13 @@ pub enum Stmt_ {
     StmtSemi(P<Expr>, NodeId),
 
     StmtMac(P<Mac>, MacStmtStyle),
+
+    /// Statement with additional attributes
+    ///
+    /// This enum variant is a size optimization
+    /// for the enclosing `Stmt` struct, since
+    /// most statements won't be prefixed with an attribute.
+    StmtWithAttr(P<(Vec<Attribute>, Stmt_)>),
 }
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacStmtStyle {

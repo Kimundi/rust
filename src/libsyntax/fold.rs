@@ -1326,6 +1326,16 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
+            ExprAttr(attr, ex) => {
+                let folder = &mut *folder;
+                attr.and_then(move |attr| {
+                    if let Some(attr) = folder.fold_attribute(attr) {
+                        ExprAttr(P(attr), folder.fold_expr(ex))
+                    } else {
+                        folder.fold_expr(ex).and_then(|node| node.node)
+                    }
+                })
+            },
             ExprParen(ex) => ExprParen(folder.fold_expr(ex))
         },
         span: folder.new_span(span)
@@ -1335,33 +1345,48 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
 pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
                                  -> SmallVector<P<Stmt>> {
     let span = folder.new_span(span);
-    match node {
-        StmtDecl(d, id) => {
-            let id = folder.new_id(id);
-            folder.fold_decl(d).into_iter().map(|d| P(Spanned {
-                node: StmtDecl(d, id),
-                span: span
-            })).collect()
+
+    fn fold_stmt_<T: Folder>(node: Stmt_, folder: &mut T) -> SmallVector<Stmt_>
+    {
+        match node {
+            StmtDecl(d, id) => {
+                let id = folder.new_id(id);
+                folder.fold_decl(d).into_iter().map(|d| StmtDecl(d, id))
+                    .collect()
+            }
+            StmtExpr(e, id) => {
+                let id = folder.new_id(id);
+                SmallVector::one(StmtExpr(folder.fold_expr(e), id))
+            }
+            StmtSemi(e, id) => {
+                let id = folder.new_id(id);
+                SmallVector::one(StmtSemi(folder.fold_expr(e), id))
+            }
+            StmtMac(mac, semi) => SmallVector::one(
+                StmtMac(mac.map(|m| folder.fold_mac(m)), semi)
+            ),
+            StmtWithAttr(p) => {
+                p.and_then(|(attr, stmt)| {
+                    if let Some(attr) = folder.fold_attribute(attr) {
+                        fold_stmt_(stmt, folder).into_iter().map(|stmt| {
+                            // FIXME: Is duplicating attributes
+                            // the best way to proceed here?
+                            // Maybe better to make the decl
+                            // folder strictly 1:1, and handle
+                            // multiple results just with the stmt folder.
+                            StmtWithAttr(P((attr.clone(), stmt)))
+                        }).collect()
+                    } else {
+                        fold_stmt_(stmt, folder)
+                    }
+                })
+            }
         }
-        StmtExpr(e, id) => {
-            let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtExpr(folder.fold_expr(e), id),
-                span: span
-            }))
-        }
-        StmtSemi(e, id) => {
-            let id = folder.new_id(id);
-            SmallVector::one(P(Spanned {
-                node: StmtSemi(folder.fold_expr(e), id),
-                span: span
-            }))
-        }
-        StmtMac(mac, semi) => SmallVector::one(P(Spanned {
-            node: StmtMac(mac.map(|m| folder.fold_mac(m)), semi),
-            span: span
-        }))
     }
+    fold_stmt_(node, folder).into_iter().map(|node| P(Spanned {
+        node: node,
+        span: span,
+    })).collect()
 }
 
 #[cfg(test)]

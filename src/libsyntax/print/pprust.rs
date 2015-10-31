@@ -1604,32 +1604,41 @@ impl<'a> State<'a> {
 
     pub fn print_stmt(&mut self, st: &ast::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
-        match st.node {
-            ast::StmtDecl(ref decl, _) => {
-                try!(self.print_decl(&**decl));
-            }
-            ast::StmtExpr(ref expr, _) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr(&**expr));
-            }
-            ast::StmtSemi(ref expr, _) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr(&**expr));
-                try!(word(&mut self.s, ";"));
-            }
-            ast::StmtMac(ref mac, style) => {
-                try!(self.space_if_not_bol());
-                let delim = match style {
-                    ast::MacStmtWithBraces => token::Brace,
-                    _ => token::Paren
-                };
-                try!(self.print_mac(&**mac, delim));
-                match style {
-                    ast::MacStmtWithBraces => {}
-                    _ => try!(word(&mut self.s, ";")),
+        fn print_stmt_(s: &mut State, st: &ast::Stmt_) -> io::Result<()> {
+            let r = match *st {
+                ast::StmtDecl(ref decl, _) => {
+                    try!(s.print_decl(&**decl));
                 }
-            }
+                ast::StmtExpr(ref expr, _) => {
+                    try!(s.space_if_not_bol());
+                    try!(s.print_expr(&**expr));
+                }
+                ast::StmtSemi(ref expr, _) => {
+                    try!(s.space_if_not_bol());
+                    try!(s.print_expr(&**expr));
+                    try!(word(&mut s.s, ";"));
+                }
+                ast::StmtMac(ref mac, style) => {
+                    try!(s.space_if_not_bol());
+                    let delim = match style {
+                        ast::MacStmtWithBraces => token::Brace,
+                        _ => token::Paren
+                    };
+                    try!(s.print_mac(&**mac, delim));
+                    match style {
+                        ast::MacStmtWithBraces => {}
+                        _ => try!(word(&mut s.s, ";")),
+                    }
+                }
+                ast::StmtWithAttr(ref p) => {
+                    try!(s.space_if_not_bol());
+                    try!(s.print_attribute(&p.0));
+                    try!(print_stmt_(s, &p.1));
+                }
+            };
+            Ok(r)
         }
+        try!(print_stmt_(self, &st.node));
         if parse::classify::stmt_ends_with_semi(&st.node) {
             try!(word(&mut self.s, ";"));
         }
@@ -2223,6 +2232,10 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_expr(&**e));
                 try!(self.pclose());
+            }
+            ast::ExprAttr(ref attr, ref expr) => {
+                try!(self.print_attribute(attr));
+                try!(self.print_expr(expr));
             }
         }
         try!(self.ann.post(self, NodeExpr(expr)));

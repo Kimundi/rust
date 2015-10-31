@@ -29,12 +29,18 @@ pub fn path_name_i(idents: &[Ident]) -> String {
 }
 
 pub fn stmt_id(s: &Stmt) -> Option<NodeId> {
-    match s.node {
-      StmtDecl(_, id) => Some(id),
-      StmtExpr(_, id) => Some(id),
-      StmtSemi(_, id) => Some(id),
-      StmtMac(..) => None,
+    fn stmt_id_(s: &Stmt_) -> Option<NodeId> {
+        match *s {
+            StmtDecl(_, id) => Some(id),
+            StmtExpr(_, id) => Some(id),
+            StmtSemi(_, id) => Some(id),
+            StmtWithAttr(ref s) => {
+                stmt_id_(&s.1)
+            }
+            StmtMac(..) => None,
+        }
     }
+    stmt_id_(&s.node)
 }
 
 pub fn binop_to_string(op: BinOp_) -> &'static str {

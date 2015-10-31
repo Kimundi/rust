@@ -711,7 +711,10 @@ pub enum Stmt_ {
     /// This enum variant is a size optimization
     /// for the enclosing `Stmt` struct, since
     /// most statements won't be prefixed with an attribute.
-    StmtWithAttr(P<(Vec<Attribute>, Stmt_)>),
+    ///
+    /// Item decls won't be decorated with this, they carry their
+    /// attributes with them.
+    StmtWithAttr(P<(Attribute, Stmt_)>),
 }
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacStmtStyle {

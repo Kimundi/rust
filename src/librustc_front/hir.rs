@@ -526,6 +526,9 @@ pub enum Stmt_ {
 
     /// Expr with trailing semi-colon (may have any type):
     StmtSemi(P<Expr>, NodeId),
+
+    /// A statement with a attribute.
+    StmtWithAttr(P<(Attribute, Stmt_)>)
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
@@ -699,6 +702,9 @@ pub enum Expr_ {
     /// For example, `[1u8; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
+
+    /// An expression attribute
+    ExprAttr(P<Attribute>, P<Expr>),
 }
 
 /// The explicit Self type in a "qualified path". The actual

@@ -1632,6 +1632,7 @@ impl<'a> State<'a> {
                 }
                 ast::StmtWithAttr(ref p) => {
                     try!(s.space_if_not_bol());
+                    // FIXME: Inner vs outer?
                     try!(s.print_attribute(&p.0));
                     try!(print_stmt_(s, &p.1));
                 }
@@ -2234,6 +2235,7 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::ExprAttr(ref attr, ref expr) => {
+                // FIXME: Inner vs outer?
                 try!(self.print_attribute(attr));
                 try!(self.print_expr(expr));
             }

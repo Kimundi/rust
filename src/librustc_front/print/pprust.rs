@@ -1031,20 +1031,30 @@ impl<'a> State<'a> {
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
-        match st.node {
-            hir::StmtDecl(ref decl, _) => {
-                try!(self.print_decl(&**decl));
-            }
-            hir::StmtExpr(ref expr, _) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr(&**expr));
-            }
-            hir::StmtSemi(ref expr, _) => {
-                try!(self.space_if_not_bol());
-                try!(self.print_expr(&**expr));
-                try!(word(&mut self.s, ";"));
-            }
+        fn print_stmt_(s: &mut State, st: &hir::Stmt_) -> io::Result<()> {
+            let r = match *st {
+                hir::StmtDecl(ref decl, _) => {
+                    try!(s.print_decl(&**decl));
+                }
+                hir::StmtExpr(ref expr, _) => {
+                    try!(s.space_if_not_bol());
+                    try!(s.print_expr(&**expr));
+                }
+                hir::StmtSemi(ref expr, _) => {
+                    try!(s.space_if_not_bol());
+                    try!(s.print_expr(&**expr));
+                    try!(word(&mut s.s, ";"));
+                }
+                hir::StmtWithAttr(ref p) => {
+                    try!(s.space_if_not_bol());
+                    // FIXME: Inner vs outer?
+                    try!(s.print_attribute(&p.0));
+                    try!(print_stmt_(s, &p.1));
+                }
+            };
+            Ok(r)
         }
+        try!(print_stmt_(self, &st.node));
         if stmt_ends_with_semi(&st.node) {
             try!(word(&mut self.s, ";"));
         }
@@ -1549,6 +1559,11 @@ impl<'a> State<'a> {
                 }
 
                 try!(self.pclose());
+            }
+            hir::ExprAttr(ref attr, ref expr) => {
+                // FIXME: Inner vs outer?
+                try!(self.print_attribute(attr));
+                try!(self.print_expr(expr));
             }
         }
         try!(self.ann.post(self, NodeExpr(expr)));
@@ -2417,5 +2432,6 @@ fn stmt_ends_with_semi(stmt: &hir::Stmt_) -> bool {
         hir::StmtSemi(..) => {
             false
         }
+        hir::StmtWithAttr(ref p) => stmt_ends_with_semi(&p.1)
     }
 }

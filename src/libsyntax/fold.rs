@@ -1327,14 +1327,15 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
             ExprAttr(attr, ex) => {
-                let folder = &mut *folder;
-                attr.and_then(move |attr| {
-                    if let Some(attr) = folder.fold_attribute(attr) {
-                        ExprAttr(P(attr), folder.fold_expr(ex))
-                    } else {
-                        folder.fold_expr(ex).and_then(|node| node.node)
-                    }
-                })
+                let attr = attr.and_then(|attr| attr);
+                if let Some(attr) = folder.fold_attribute(attr) {
+                    ExprAttr(P(attr), folder.fold_expr(ex))
+                } else {
+                    // Drop the partially constructed outer Expr, leaving
+                    // a unused node id behind.
+                    // FIXME: Is this Ok?
+                    return folder.fold_expr(ex).and_then(|ex| ex);
+                }
             },
             ExprParen(ex) => ExprParen(folder.fold_expr(ex))
         },

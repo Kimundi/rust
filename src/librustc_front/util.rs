@@ -82,11 +82,15 @@ pub fn binop_to_string(op: BinOp_) -> &'static str {
 }
 
 pub fn stmt_id(s: &Stmt) -> NodeId {
-    match s.node {
-        StmtDecl(_, id) => id,
-        StmtExpr(_, id) => id,
-        StmtSemi(_, id) => id,
+    fn stmt_id_(s: &Stmt_) -> NodeId {
+        match *s {
+            StmtDecl(_, id) => id,
+            StmtExpr(_, id) => id,
+            StmtSemi(_, id) => id,
+            StmtWithAttr(ref p) => stmt_id_(&p.1),
+        }
     }
+    stmt_id_(&s.node)
 }
 
 pub fn lazy_binop(b: BinOp_) -> bool {

@@ -642,12 +642,19 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 }
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
-    match statement.node {
-        StmtDecl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
-            visitor.visit_expr(expression)
+    fn walk_stmt_<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt_) {
+        match *statement {
+            StmtDecl(ref declaration, _) => visitor.visit_decl(declaration),
+            StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
+                visitor.visit_expr(expression)
+            }
+            StmtWithAttr(ref p) => {
+                visitor.visit_attribute(&p.0);
+                walk_stmt_(visitor, &p.1);
+            }
         }
     }
+    walk_stmt_(visitor, &statement.node);
 }
 
 pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
@@ -771,6 +778,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             for &(_, ref output, _) in &ia.outputs {
                 visitor.visit_expr(&output)
             }
+        }
+        ExprAttr(ref attr, ref expr) => {
+            visitor.visit_attribute(attr);
+            visitor.visit_expr(expr);
         }
     }
 

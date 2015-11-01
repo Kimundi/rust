@@ -1431,6 +1431,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                             Some(expr_ident(lctx, e.span, result_ident))))
             }
 
+            ExprAttr(ref attr, ref expr) => {
+                hir::ExprAttr(attr.clone(), lower_expr(lctx, expr))
+            }
+
             ExprMac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
@@ -1438,27 +1442,31 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 }
 
 pub fn lower_stmt(_lctx: &LoweringContext, s: &Stmt) -> P<hir::Stmt> {
-    match s.node {
-        StmtDecl(ref d, id) => {
-            P(Spanned {
-                node: hir::StmtDecl(lower_decl(_lctx, d), id),
-                span: s.span,
-            })
+    fn lower_stmt_(_lctx: &LoweringContext, s: &Stmt_) -> hir::Stmt_ {
+        match *s {
+            StmtDecl(ref d, id) => {
+                hir::StmtDecl(lower_decl(_lctx, d), id)
+            }
+            StmtExpr(ref e, id) => {
+                hir::StmtExpr(lower_expr(_lctx, e), id)
+            }
+            StmtSemi(ref e, id) => {
+                hir::StmtSemi(lower_expr(_lctx, e), id)
+            }
+            StmtWithAttr(ref p) => {
+                hir::StmtWithAttr(P((
+                    p.0.clone(),
+                    lower_stmt_(_lctx, &p.1),
+                )))
+            }
+            StmtMac(..) => panic!("Shouldn't exist here"),
         }
-        StmtExpr(ref e, id) => {
-            P(Spanned {
-                node: hir::StmtExpr(lower_expr(_lctx, e), id),
-                span: s.span,
-            })
-        }
-        StmtSemi(ref e, id) => {
-            P(Spanned {
-                node: hir::StmtSemi(lower_expr(_lctx, e), id),
-                span: s.span,
-            })
-        }
-        StmtMac(..) => panic!("Shouldn't exist here"),
     }
+
+    P(Spanned {
+        node: lower_stmt_(_lctx, &s.node),
+        span: s.span,
+    })
 }
 
 pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureClause) -> hir::CaptureClause {

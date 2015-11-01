@@ -248,6 +248,7 @@ mod svh_visitor {
         SawExprInlineAsm(&'a hir::InlineAsm),
         SawExprStruct,
         SawExprRepeat,
+        SawExprAttr,
     }
 
     fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
@@ -281,6 +282,7 @@ mod svh_visitor {
             ExprInlineAsm(ref asm)   => SawExprInlineAsm(asm),
             ExprStruct(..)           => SawExprStruct,
             ExprRepeat(..)           => SawExprRepeat,
+            ExprAttr(..)             => SawExprAttr,
         }
     }
 
@@ -290,6 +292,7 @@ mod svh_visitor {
         SawStmtDecl,
         SawStmtExpr,
         SawStmtSemi,
+        SawStmtWithAttr,
     }
 
     fn saw_stmt(node: &Stmt_) -> SawStmtComponent {
@@ -297,6 +300,7 @@ mod svh_visitor {
             StmtDecl(..) => SawStmtDecl,
             StmtExpr(..) => SawStmtExpr,
             StmtSemi(..) => SawStmtSemi,
+            StmtWithAttr(_) => SawStmtWithAttr,
         }
     }
 

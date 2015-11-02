@@ -3745,6 +3745,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           fcx.write_ty(id, range_type);
        }
 
+       hir::ExprAttr(_, ref expr) => {
+            return check_expr_with_unifier(fcx, expr, expected,
+                                           lvalue_pref, unifier);
+       }
     }
 
     debug!("type of expr({}) {} is...", expr.id,
@@ -3955,34 +3959,44 @@ pub fn check_stmt<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, stmt: &'tcx hir::Stmt)  {
     let node_id;
     let mut saw_bot = false;
     let mut saw_err = false;
-    match stmt.node {
-      hir::StmtDecl(ref decl, id) => {
-        node_id = id;
-        match decl.node {
-          hir::DeclLocal(ref l) => {
-              check_decl_local(fcx, &**l);
-              let l_t = fcx.node_ty(l.id);
-              saw_bot = saw_bot || fcx.infcx().type_var_diverges(l_t);
-              saw_err = saw_err || l_t.references_error();
-          }
-          hir::DeclItem(_) => {/* ignore for now */ }
+
+    let mut stmt = &stmt.node;
+    loop {
+        match *stmt {
+            hir::StmtDecl(ref decl, id) => {
+                node_id = id;
+                match decl.node {
+                hir::DeclLocal(ref l) => {
+                    check_decl_local(fcx, &**l);
+                    let l_t = fcx.node_ty(l.id);
+                    saw_bot = saw_bot || fcx.infcx().type_var_diverges(l_t);
+                    saw_err = saw_err || l_t.references_error();
+                }
+                hir::DeclItem(_) => {/* ignore for now */ }
+                }
+            }
+            hir::StmtExpr(ref expr, id) => {
+                node_id = id;
+                // Check with expected type of ()
+                check_expr_has_type(fcx, &**expr, fcx.tcx().mk_nil());
+                let expr_ty = fcx.expr_ty(&**expr);
+                saw_bot = saw_bot || fcx.infcx().type_var_diverges(expr_ty);
+                saw_err = saw_err || expr_ty.references_error();
+            }
+            hir::StmtSemi(ref expr, id) => {
+                node_id = id;
+                check_expr(fcx, &**expr);
+                let expr_ty = fcx.expr_ty(&**expr);
+                saw_bot |= fcx.infcx().type_var_diverges(expr_ty);
+                saw_err |= expr_ty.references_error();
+            }
+            hir::StmtWithAttr(ref p) => {
+                // Skip attributes
+                stmt = &p.1;
+                continue;
+            }
         }
-      }
-      hir::StmtExpr(ref expr, id) => {
-        node_id = id;
-        // Check with expected type of ()
-        check_expr_has_type(fcx, &**expr, fcx.tcx().mk_nil());
-        let expr_ty = fcx.expr_ty(&**expr);
-        saw_bot = saw_bot || fcx.infcx().type_var_diverges(expr_ty);
-        saw_err = saw_err || expr_ty.references_error();
-      }
-      hir::StmtSemi(ref expr, id) => {
-        node_id = id;
-        check_expr(fcx, &**expr);
-        let expr_ty = fcx.expr_ty(&**expr);
-        saw_bot |= fcx.infcx().type_var_diverges(expr_ty);
-        saw_err |= expr_ty.references_error();
-      }
+        break;
     }
     if saw_bot {
         fcx.write_ty(node_id, fcx.infcx().next_diverging_ty_var());
@@ -4019,24 +4033,39 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut any_diverges = false;
     let mut any_err = false;
     for s in &blk.stmts {
+        let span = s.span;
         check_stmt(fcx, &**s);
         let s_id = ::rustc_front::util::stmt_id(&**s);
         let s_ty = fcx.node_ty(s_id);
-        if any_diverges && !warned && match s.node {
-            hir::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclLocal(_) => true,
-                    _ => false,
+
+        let is_not_item;
+        let mut s = &s.node;
+
+        loop {
+            is_not_item = match *s {
+                hir::StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        hir::DeclLocal(_) => true,
+                        _ => false,
+                    }
                 }
-            }
-            hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
-        } {
+                hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                hir::StmtWithAttr(ref p) => {
+                    // Ignore attributes
+                    s = &p.1;
+                    continue;
+                }
+            };
+            break;
+        }
+
+        if any_diverges && !warned && is_not_item {
             fcx.ccx
                 .tcx
                 .sess
                 .add_lint(lint::builtin::UNREACHABLE_CODE,
                           s_id,
-                          s.span,
+                          span,
                           "unreachable statement".to_string());
             warned = true;
         }

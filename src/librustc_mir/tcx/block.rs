@@ -53,45 +53,57 @@ fn mirror_stmts<'a, 'tcx: 'a, STMTS>(cx: &mut Cx<'a, 'tcx>,
 {
     let mut result = vec![];
     while let Some((index, stmt)) = stmts.next() {
-        match stmt.node {
-            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
-                result.push(
-                    StmtRef::Mirror(
-                        Box::new(Stmt { span: stmt.span,
-                                        kind: StmtKind::Expr {
-                                            scope: cx.tcx.region_maps.node_extent(id),
-                                            expr: expr.to_ref() } }))),
+        let span = stmt.span;
+        let mut stmt = &stmt.node;
 
-            hir::StmtDecl(ref decl, id) => {
-                match decl.node {
-                    hir::DeclItem(..) => { /* ignore for purposes of the MIR */ }
-                    hir::DeclLocal(ref local) => {
-                        let remainder_extent = CodeExtentData::Remainder(BlockRemainder {
-                            block: block_id,
-                            first_statement_index: index as u32,
-                        });
-                        let remainder_extent =
-                            cx.tcx.region_maps.lookup_code_extent(remainder_extent);
+        loop {
+            match *stmt {
+                hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
+                    result.push(
+                        StmtRef::Mirror(
+                            Box::new(Stmt { span: span,
+                                            kind: StmtKind::Expr {
+                                                scope: cx.tcx.region_maps.node_extent(id),
+                                                expr: expr.to_ref() } }))),
 
-                        // pull in all following statements, since
-                        // they are within the scope of this let:
-                        let following_stmts = mirror_stmts(cx, block_id, stmts);
+                hir::StmtDecl(ref decl, id) => {
+                    match decl.node {
+                        hir::DeclItem(..) => { /* ignore for purposes of the MIR */ }
+                        hir::DeclLocal(ref local) => {
+                            let remainder_extent = CodeExtentData::Remainder(BlockRemainder {
+                                block: block_id,
+                                first_statement_index: index as u32,
+                            });
+                            let remainder_extent =
+                                cx.tcx.region_maps.lookup_code_extent(remainder_extent);
 
-                        result.push(StmtRef::Mirror(Box::new(Stmt {
-                            span: stmt.span,
-                            kind: StmtKind::Let {
-                                remainder_scope: remainder_extent,
-                                init_scope: cx.tcx.region_maps.node_extent(id),
-                                pattern: PatNode::irrefutable(&local.pat).to_ref(),
-                                initializer: local.init.to_ref(),
-                                stmts: following_stmts,
-                            },
-                        })));
+                            // pull in all following statements, since
+                            // they are within the scope of this let:
+                            let following_stmts = mirror_stmts(cx, block_id, stmts);
 
-                        return result;
+                            result.push(StmtRef::Mirror(Box::new(Stmt {
+                                span: span,
+                                kind: StmtKind::Let {
+                                    remainder_scope: remainder_extent,
+                                    init_scope: cx.tcx.region_maps.node_extent(id),
+                                    pattern: PatNode::irrefutable(&local.pat).to_ref(),
+                                    initializer: local.init.to_ref(),
+                                    stmts: following_stmts,
+                                },
+                            })));
+
+                            return result;
+                        }
                     }
                 }
+                hir::StmtWithAttr(ref p) => {
+                    // FIXME: Again, no idea if ignoring attributes here is the
+                    // right thing to do
+                    stmt = &p.1;
+                    continue;
+                }
             }
+            break;
         }
     }
     return result;

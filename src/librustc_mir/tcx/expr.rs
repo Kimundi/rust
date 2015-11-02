@@ -309,6 +309,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 ExprKind::Tuple { fields: fields.to_ref() },
             hir::ExprCall(ref fun, ref args) =>
                 ExprKind::Call { fun: fun.to_ref(), args: args.to_ref() },
+
+            hir::ExprAttr(_, ref expr) => {
+                // FIXME: Like for statements, unsure if dropping
+                // attributes here is the right thing to do.
+                return expr.make_mirror(cx);
+            },
         };
 
         let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);

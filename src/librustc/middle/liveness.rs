@@ -496,7 +496,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) => {
+      hir::ExprRange(..) | hir::ExprAttr(..) => {
           visit::walk_expr(ir, expr);
       }
     }
@@ -872,15 +872,23 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
-        match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
-                self.propagate_through_decl(&**decl, succ)
-            }
+        fn propagate_through_stmt_(s: &mut Liveness, stmt: &hir::Stmt_,
+                                   succ: LiveNode) -> LiveNode {
+            match *stmt {
+                hir::StmtDecl(ref decl, _) => {
+                    s.propagate_through_decl(&**decl, succ)
+                }
 
-            hir::StmtExpr(ref expr, _) | hir::StmtSemi(ref expr, _) => {
-                self.propagate_through_expr(&**expr, succ)
+                hir::StmtExpr(ref expr, _) | hir::StmtSemi(ref expr, _) => {
+                    s.propagate_through_expr(&**expr, succ)
+                }
+
+                hir::StmtWithAttr(ref p) => {
+                    propagate_through_stmt_(s, &p.1, succ)
+                }
             }
         }
+        propagate_through_stmt_(self, &stmt.node, succ)
     }
 
     fn propagate_through_decl(&mut self, decl: &hir::Decl, succ: LiveNode)
@@ -1160,7 +1168,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprBox(ref e) |
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
-          hir::ExprUnary(_, ref e) => {
+          hir::ExprUnary(_, ref e) |
+          hir::ExprAttr(_, ref e) => {
             self.propagate_through_expr(&**e, succ)
           }
 
@@ -1434,7 +1443,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) => {
+      hir::ExprRange(..) | hir::ExprAttr(..) => {
         visit::walk_expr(this, expr);
       }
     }

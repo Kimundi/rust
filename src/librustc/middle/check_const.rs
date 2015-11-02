@@ -392,17 +392,25 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &hir::Block) {
         // Check all statements in the block
         for stmt in &block.stmts {
-            let span = match stmt.node {
-                hir::StmtDecl(ref decl, _) => {
-                    match decl.node {
-                        hir::DeclLocal(_) => decl.span,
+            fn visit(stmt: &hir::Stmt_) -> Option<Span> {
+                match *stmt {
+                    hir::StmtDecl(ref decl, _) => {
+                        match decl.node {
+                            hir::DeclLocal(_) => Some(decl.span),
 
-                        // Item statements are allowed
-                        hir::DeclItem(_) => continue
+                            // Item statements are allowed
+                            hir::DeclItem(_) => return None,
+                        }
                     }
+                    hir::StmtExpr(ref expr, _) => Some(expr.span),
+                    hir::StmtSemi(ref semi, _) => Some(semi.span),
+                    hir::StmtWithAttr(ref p) => visit(&p.1),
                 }
-                hir::StmtExpr(ref expr, _) => expr.span,
-                hir::StmtSemi(ref semi, _) => semi.span,
+            }
+            let span = if let Some(span) = visit(&stmt.node) {
+                span
+            } else {
+                continue
             };
             self.add_qualif(ConstQualif::NOT_CONST);
             if self.mode != Mode::Var {
@@ -780,7 +788,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprField(..) |
         hir::ExprTupField(..) |
         hir::ExprVec(_) |
-        hir::ExprTup(..) => {}
+        hir::ExprTup(..) |
+        hir::ExprAttr(..) => {}
 
         // Conditional control flow (possible to implement).
         hir::ExprMatch(..) |

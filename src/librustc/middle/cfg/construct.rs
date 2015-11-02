@@ -71,17 +71,24 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
-        match stmt.node {
-            hir::StmtDecl(ref decl, id) => {
-                let exit = self.decl(&**decl, pred);
-                self.add_ast_node(id, &[exit])
-            }
+        fn stmt_(s: &mut CFGBuilder, stmt: &hir::Stmt_, pred: CFGIndex)
+                 -> CFGIndex
+        {
+            match *stmt {
+                hir::StmtDecl(ref decl, id) => {
+                    let exit = s.decl(&**decl, pred);
+                    s.add_ast_node(id, &[exit])
+                }
 
-            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
-                let exit = self.expr(&**expr, pred);
-                self.add_ast_node(id, &[exit])
+                hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
+                    let exit = s.expr(&**expr, pred);
+                    s.add_ast_node(id, &[exit])
+                }
+
+                hir::StmtWithAttr(ref p) => stmt_(s, &p.1, pred)
             }
         }
+        stmt_(self, &stmt.node, pred)
     }
 
     fn decl(&mut self, decl: &hir::Decl, pred: CFGIndex) -> CFGIndex {
@@ -354,7 +361,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ExprCast(ref e, _) |
             hir::ExprUnary(_, ref e) |
             hir::ExprField(ref e, _) |
-            hir::ExprTupField(ref e, _) => {
+            hir::ExprTupField(ref e, _) |
+            hir::ExprAttr(_, ref e) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 

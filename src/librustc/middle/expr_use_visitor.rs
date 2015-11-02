@@ -543,6 +543,11 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             hir::ExprBox(ref base) => {
                 self.consume_expr(&**base);
             }
+
+            hir::ExprAttr(_, ref expr) => {
+                // FIXME: This ignores any attribute, is that right?
+                self.walk_expr(expr);
+            }
         }
     }
 
@@ -588,25 +593,33 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     }
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt) {
-        match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclLocal(ref local) => {
-                        self.walk_local(&**local);
-                    }
+        fn walk_stmt_(s: &mut ExprUseVisitor, stmt: &hir::Stmt_) {
+            match *stmt {
+                hir::StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        hir::DeclLocal(ref local) => {
+                            s.walk_local(&**local);
+                        }
 
-                    hir::DeclItem(_) => {
-                        // we don't visit nested items in this visitor,
-                        // only the fn body we were given.
+                        hir::DeclItem(_) => {
+                            // we don't visit nested items in this visitor,
+                            // only the fn body we were given.
+                        }
                     }
                 }
-            }
 
-            hir::StmtExpr(ref expr, _) |
-            hir::StmtSemi(ref expr, _) => {
-                self.consume_expr(&**expr);
+                hir::StmtExpr(ref expr, _) |
+                hir::StmtSemi(ref expr, _) => {
+                    s.consume_expr(&**expr);
+                }
+
+                hir::StmtWithAttr(ref p) => {
+                    // FIXME: This ignores any attribute, is that right?
+                    walk_stmt_(s, &p.1);
+                }
             }
         }
+        walk_stmt_(self, &stmt.node)
     }
 
     fn walk_local(&mut self, local: &hir::Local) {

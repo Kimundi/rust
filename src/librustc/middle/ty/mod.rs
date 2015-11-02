@@ -2098,6 +2098,11 @@ impl<'tcx> ctxt<'tcx> {
             hir::ExprCast(..) => {
                 false
             }
+
+            hir::ExprAttr(_, ref expr) => {
+                // FIXME: Just passing through. Is this correct?
+                self.expr_is_lval(expr)
+            }
         }
     }
 

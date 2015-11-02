@@ -346,15 +346,19 @@ impl Folder for NestedItemsDropper {
     fn fold_block(&mut self, blk: P<hir::Block>) -> P<hir::Block> {
         blk.and_then(|hir::Block {id, stmts, expr, rules, span, ..}| {
             let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
-                let use_stmt = match stmt.node {
-                    hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
-                    hir::StmtDecl(ref decl, _) => {
-                        match decl.node {
-                            hir::DeclLocal(_) => true,
-                            hir::DeclItem(_) => false,
+                fn filter(stmt: &hir::Stmt_) -> bool {
+                    match *stmt {
+                        hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                        hir::StmtDecl(ref decl, _) => {
+                            match decl.node {
+                                hir::DeclLocal(_) => true,
+                                hir::DeclItem(_) => false,
+                            }
                         }
+                        hir::StmtWithAttr(ref p) => filter(&p.1),
                     }
-                };
+                }
+                let use_stmt = filter(&stmt.node);
                 if use_stmt {
                     Some(stmt)
                 } else {

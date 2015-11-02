@@ -532,6 +532,12 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           hir::ExprInlineAsm(..) | hir::ExprBox(..) => {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
           }
+
+          hir::ExprAttr(_, ref expr) => {
+            // FIXME: Unsure how to handle this case in this location.
+            // For now, just recurse down to the inner expression.
+            self.cat_expr_unadjusted(expr)
+          }
         }
     }
 

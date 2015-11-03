@@ -2800,5 +2800,10 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
         hir::ExprCast(..) => {
             ExprKind::RvalueDatum
         }
+
+        hir::ExprAttr(_, ref expr) => {
+            // Ignore attribute
+            expr_kind(tcx, expr)
+        }
     }
 }

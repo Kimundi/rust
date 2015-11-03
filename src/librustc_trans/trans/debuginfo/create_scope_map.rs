@@ -120,12 +120,21 @@ fn walk_block(cx: &CrateContext,
         scope_map.insert(rustc_front::util::stmt_id(&**statement),
                          scope_stack.last().unwrap().scope_metadata);
 
-        match statement.node {
-            hir::StmtDecl(ref decl, _) =>
-                walk_decl(cx, &**decl, scope_stack, scope_map),
-            hir::StmtExpr(ref exp, _) |
-            hir::StmtSemi(ref exp, _) =>
-                walk_expr(cx, &**exp, scope_stack, scope_map),
+        let mut stmt = &statement.node;
+        loop {
+            match *stmt {
+                hir::StmtDecl(ref decl, _) =>
+                    walk_decl(cx, &**decl, scope_stack, scope_map),
+                hir::StmtExpr(ref exp, _) |
+                hir::StmtSemi(ref exp, _) =>
+                    walk_expr(cx, &**exp, scope_stack, scope_map),
+                hir::StmtWithAttr(ref p) => {
+                    // Skip attributes
+                    stmt = &p.1;
+                    continue;
+                }
+            }
+            break;
         }
     }
 
@@ -483,6 +492,10 @@ fn walk_expr(cx: &CrateContext,
             for &(_, ref exp, _) in outputs {
                 walk_expr(cx, &**exp, scope_stack, scope_map);
             }
+        }
+
+        hir::ExprAttr(_, ref sub_expr) => {
+            walk_expr(cx, &**sub_expr, scope_stack, scope_map);
         }
     }
 }

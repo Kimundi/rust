@@ -55,20 +55,29 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), id, s.span, false);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
-    match s.node {
-        hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => {
-            bcx = trans_stmt_semi(bcx, &**e);
-        }
-        hir::StmtDecl(ref d, _) => {
-            match d.node {
-                hir::DeclLocal(ref local) => {
-                    bcx = init_local(bcx, &**local);
-                    debuginfo::create_local_var_metadata(bcx, &**local);
+    let mut s_ = &s.node;
+    loop {
+        match *s_ {
+            hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => {
+                bcx = trans_stmt_semi(bcx, &**e);
+            }
+            hir::StmtDecl(ref d, _) => {
+                match d.node {
+                    hir::DeclLocal(ref local) => {
+                        bcx = init_local(bcx, &**local);
+                        debuginfo::create_local_var_metadata(bcx, &**local);
+                    }
+                    // Inner items are visited by `trans_item`/`trans_meth`.
+                    hir::DeclItem(_) => {},
                 }
-                // Inner items are visited by `trans_item`/`trans_meth`.
-                hir::DeclItem(_) => {},
+            }
+            hir::StmtWithAttr(ref p) => {
+                // Ignore attributes
+                s_ = &p.1;
+                continue;
             }
         }
+        break;
     }
 
     bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, ast_util::stmt_id(s));

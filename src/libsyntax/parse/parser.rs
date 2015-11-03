@@ -3464,27 +3464,27 @@ impl<'a> Parser<'a> {
     fn parse_stmt_(&mut self) -> PResult<Option<Stmt>> {
         maybe_whole!(Some deref self, NtStmt);
 
-        fn check_expected_item(p: &mut Parser, attrs: &[Attribute]) {
-            // If we have attributes then we should have an item
-            if !attrs.is_empty() {
-                p.expected_item_err(attrs);
-            }
-        }
-
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
+        fn stmt_with_attrs(attrs: Vec<Attribute>, stmt: ast::Stmt_) -> ast::Stmt_ {
+            let mut stmt = stmt;
+            for attr in attrs {
+                stmt = ast::StmtWithAttr(P((attr, stmt)));
+            }
+            stmt
+        }
+
         Ok(Some(if self.check_keyword(keywords::Let) {
-            check_expected_item(self, &attrs);
             try!(self.expect_keyword(keywords::Let));
             let decl = try!(self.parse_let());
-            spanned(lo, decl.span.hi, StmtDecl(decl, ast::DUMMY_NODE_ID))
+            let hi = decl.span.hi;
+            let stmt = stmt_with_attrs(attrs, StmtDecl(decl, ast::DUMMY_NODE_ID));
+            spanned(lo, hi, stmt)
         } else if self.token.is_ident()
             && !self.token.is_any_keyword()
             && self.look_ahead(1, |t| *t == token::Not) {
             // it's a macro invocation:
-
-            check_expected_item(self, &attrs);
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
@@ -3531,11 +3531,12 @@ impl<'a> Parser<'a> {
             };
 
             if id.name == token::special_idents::invalid.name {
-                spanned(lo, hi,
-                        StmtMac(P(spanned(lo,
-                                          hi,
-                                          Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
-                                  style))
+                let stmt = StmtMac(P(spanned(lo,
+                                             hi,
+                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
+                                   style);
+                let stmt = stmt_with_attrs(attrs, stmt);
+                spanned(lo, hi, stmt)
             } else {
                 // if it has a special ident, it's definitely an item
                 //
@@ -3555,11 +3556,11 @@ impl<'a> Parser<'a> {
                             lo, hi, id /*id is good here*/,
                             ItemMac(spanned(lo, hi,
                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
-                            Inherited, Vec::new(/*no attrs*/))))),
+                            Inherited, attrs)))),
                     ast::DUMMY_NODE_ID))
             }
         } else {
-            match try!(self.parse_item_(attrs, false)) {
+            match try!(self.parse_item_(attrs.clone(), false, true)) {
                 Some(i) => {
                     let hi = i.span.hi;
                     let decl = P(spanned(lo, hi, DeclItem(i)));
@@ -3578,7 +3579,10 @@ impl<'a> Parser<'a> {
 
                     // Remainder are line-expr stmts.
                     let e = try!(self.parse_expr_res(Restrictions::RESTRICTION_STMT_EXPR));
-                    spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID))
+                    let hi = e.span.hi;
+                    let stmt = StmtExpr(e, ast::DUMMY_NODE_ID);
+                    let stmt = stmt_with_attrs(attrs, stmt);
+                    spanned(lo, hi, stmt)
                 }
             }
         }))
@@ -5248,7 +5252,7 @@ impl<'a> Parser<'a> {
     /// NB: this function no longer parses the items inside an
     /// extern crate.
     fn parse_item_(&mut self, attrs: Vec<Attribute>,
-                   macros_allowed: bool) -> PResult<Option<P<Item>>> {
+                   macros_allowed: bool, attributes_allowed: bool) -> PResult<Option<P<Item>>> {
         let nt_item = match self.token {
             token::Interpolated(token::NtItem(ref item)) => {
                 Some((**item).clone())
@@ -5506,7 +5510,7 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
+        self.parse_macro_use_or_failure(attrs,macros_allowed,attributes_allowed,lo,visibility)
     }
 
     /// Parse a foreign item.
@@ -5525,7 +5529,7 @@ impl<'a> Parser<'a> {
         }
 
         // FIXME #5668: this will occur for a macro invocation:
-        match try!(self.parse_macro_use_or_failure(attrs, true, lo, visibility)) {
+        match try!(self.parse_macro_use_or_failure(attrs, true, false, lo, visibility)) {
             Some(item) => {
                 return Err(self.span_fatal(item.span, "macros cannot expand to foreign items"));
             }
@@ -5538,6 +5542,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: Vec<Attribute> ,
         macros_allowed: bool,
+        attributes_allowed: bool,
         lo: BytePos,
         visibility: Visibility
     ) -> PResult<Option<P<Item>>> {
@@ -5604,7 +5609,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if !attrs.is_empty() {
+        if !attributes_allowed && !attrs.is_empty() {
             self.expected_item_err(&attrs);
         }
         Ok(None)
@@ -5612,7 +5617,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_item_nopanic(&mut self) -> PResult<Option<P<Item>>> {
         let attrs = self.parse_outer_attributes();
-        self.parse_item_(attrs, true)
+        self.parse_item_(attrs, true, false)
     }
 
 
